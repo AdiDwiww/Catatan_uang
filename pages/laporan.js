@@ -124,7 +124,7 @@ export default function Laporan() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Laporan & Analisis
-          </h1>
+        </h1>
           <button
             onClick={() => setShowExportModal(true)}
             className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
@@ -141,7 +141,7 @@ export default function Laporan() {
                 <div className="h-24"></div>
               </Card>
             ))}
-          </div>
+              </div>
         ) : isError ? (
           <Card className="mb-8 p-6 text-center">
             <p className="text-red-500">Terjadi kesalahan saat memuat data</p>
@@ -190,7 +190,7 @@ export default function Laporan() {
                 iconColor="purple"
                 description="Nilai rata-rata per transaksi"
               />
-            </div>
+              </div>
             
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -344,7 +344,7 @@ export default function Laporan() {
                 totalPages={totalPages}
                 onPageChange={setCurrentPage}
               />
-            </Card>
+          </Card>
           </>
         )}
         
