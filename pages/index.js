@@ -1,54 +1,44 @@
-import { useState, useEffect } from 'react';
-import dynamic from 'next/dynamic';
+import { useState } from 'react';
 import { 
   ArrowTrendingUpIcon, 
   BanknotesIcon,
-  DocumentArrowDownIcon
+  ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
+  DocumentTextIcon,
+  FolderIcon,
+  UsersIcon,
+  CurrencyDollarIcon,
+  ChartBarIcon,
+  ReceiptPercentIcon
 } from '@heroicons/react/24/outline';
 import Layout from '../components/Layout';
 import Card from '../components/Card';
+import KpiCard from '../components/KpiCard';
 import FilterSearch from '../components/FilterSearch';
-import Papa from 'papaparse';
-
-// Lazy load heavy components
-const Charts = dynamic(() => import('../components/Charts'), {
-  loading: () => <div className="h-96 flex items-center justify-center">Loading chart...</div>
-});
+import Pagination from '../components/Pagination';
+import { useDashboard } from '../lib/hooks';
+import { AdvancedLineChart, AdvancedPieChart } from '../components/AdvancedCharts';
 
 export default function Home() {
-  const [summary, setSummary] = useState({ totalPenjualan: 0, totalProfit: 0 });
-  const [transaksi, setTransaksi] = useState([]);
+  // Gunakan SWR hook untuk data dashboard
+  const { summary, transaksi, isLoading, isError, mutate } = useDashboard();
+  
+  // State untuk filter dan pagination
   const [filteredData, setFilteredData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      setIsLoading(true);
-      const [summaryRes, transaksiRes] = await Promise.all([
-        fetch('/api/laporan'),
-        fetch('/api/transaksi')
-      ]);
-      
-      if (summaryRes.ok && transaksiRes.ok) {
-        const summaryData = await summaryRes.json();
-        let transaksiData = await transaksiRes.json();
-        // Urutkan transaksi dari tanggal terbaru ke terlama
-        transaksiData = transaksiData.sort((a, b) => new Date(b.tanggal) - new Date(a.tanggal));
-        setSummary(summaryData);
-        setTransaksi(transaksiData);
-        setFilteredData(transaksiData);
-      }
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    } finally {
-      setIsLoading(false);
-    }
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(5);
+  
+  // Formatter untuk nilai uang
+  const formatCurrency = (value) => {
+    return `Rp ${value.toLocaleString('id-ID')}`;
   };
-
+  
+  // Formatter untuk persentase
+  const formatPercentage = (value) => {
+    return `${value.toFixed(2)}%`;
+  };
+  
+  // Filter data transaksi
   const handleFilter = (filters) => {
     let filtered = [...transaksi];
 
@@ -70,117 +60,230 @@ export default function Home() {
     }
 
     setFilteredData(filtered);
+    setCurrentPage(1); // Reset ke halaman pertama saat filter berubah
   };
-
-  const handleExport = (format) => {
-    const data = filteredData.map(t => ({
-      Tanggal: new Date(t.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-      Customer: t.customer.nama,
-      Produk: t.produk,
-      'Harga Asli': t.hargaAsli,
-      'Harga Jual': t.hargaJual,
-      Profit: t.hargaJual - t.hargaAsli,
-      'Metode Pembayaran': t.metode,
-      Tujuan: t.tujuan,
-      Tag: t.tag
-    }));
-
-    if (format === 'csv') {
-      const csv = Papa.unparse(data);
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'transaksi.csv';
-      link.click();
-    } else if (format === 'json') {
-      const json = JSON.stringify(data, null, 2);
-      const blob = new Blob([json], { type: 'application/json' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'transaksi.json';
-      link.click();
+  
+  // Pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  
+  // Prepare tujuan list for filter
+  const tujuanList = transaksi ? [...new Set(transaksi.map(t => t.tujuan))].filter(Boolean) : [];
+  
+  // Prepare chart data
+  const prepareChartData = () => {
+    if (!transaksi || transaksi.length === 0) return { dailyData: [], methodData: [] };
+    
+    // Group by date
+    const dailyData = transaksi.reduce((acc, t) => {
+      const date = new Date(t.tanggal).toLocaleDateString('id-ID');
+      if (!acc[date]) {
+        acc[date] = { date, total: 0, profit: 0 };
+      }
+      acc[date].total += t.hargaJual;
+      acc[date].profit += (t.hargaJual - t.hargaAsli);
+      return acc;
+    }, {});
+    
+    // Group by payment method
+    const methodData = transaksi.reduce((acc, t) => {
+      const method = t.metode || 'Unknown';
+      if (!acc[method]) {
+        acc[method] = { method, value: 0 };
+      }
+      acc[method].value += t.hargaJual;
+      return acc;
+    }, {});
+    
+    return {
+      dailyData: Object.values(dailyData).sort((a, b) => new Date(a.date) - new Date(b.date)),
+      methodData: Object.values(methodData)
+    };
+  };
+  
+  const { dailyData, methodData } = prepareChartData();
+  
+  // Effect to set filtered data when transaksi data changes
+  useState(() => {
+    if (transaksi) {
+      setFilteredData(transaksi);
     }
-  };
-
-  // Ambil daftar tujuan pembayaran unik dari semua transaksi
-  const tujuanList = Array.from(new Set(
-    transaksi
-      .map(t => t.tujuan)
-      .filter(Boolean)
-  ));
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="flex items-center justify-center h-screen">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
-        </div>
-      </Layout>
-    );
-  }
+  }, [transaksi]);
 
   return (
     <Layout>
-      <div className="space-y-8">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
-            Dashboard Keuangan
+      <div className="container mx-auto px-4 py-6">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+            Dashboard
           </h1>
-          <div className="flex gap-4">
-            <button
-              onClick={() => handleExport('csv')}
-              className="flex items-center px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-            >
-              <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-              Export CSV
-            </button>
-            <button
-              onClick={() => handleExport('json')}
-              className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <DocumentArrowDownIcon className="w-5 h-5 mr-2" />
-              Export JSON
-            </button>
+        </div>
+        
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i} className="animate-pulse">
+                <div className="h-24"></div>
+              </Card>
+            ))}
           </div>
-        </div>
-
-        <FilterSearch onFilter={handleFilter} tujuanList={tujuanList} />
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-600 dark:text-gray-300">
-                  Total Penjualan
-                </h2>
-                <p className="text-3xl font-bold text-indigo-600 dark:text-indigo-400 mt-2">
-                  Rp {summary.totalPenjualan.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-3 bg-indigo-100 dark:bg-indigo-900 rounded-full">
-                <BanknotesIcon className="w-8 h-8 text-indigo-600 dark:text-indigo-400" />
-              </div>
-            </div>
+        ) : isError ? (
+          <Card className="mb-8 p-6 text-center">
+            <p className="text-red-500">Terjadi kesalahan saat memuat data</p>
+            <button 
+              onClick={() => mutate()} 
+              className="mt-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              Coba Lagi
+            </button>
           </Card>
-
-          <Card>
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-600 dark:text-gray-300">
-                  Total Profit
-                </h2>
-                <p className="text-3xl font-bold text-green-600 dark:text-green-400 mt-2">
-                  Rp {summary.totalProfit.toLocaleString()}
-                </p>
-              </div>
-              <div className="p-3 bg-green-100 dark:bg-green-900 rounded-full">
-                <ArrowTrendingUpIcon className="w-8 h-8 text-green-600 dark:text-green-400" />
-              </div>
+        ) : (
+          <>
+            {/* KPI Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <KpiCard
+                title="Total Penjualan"
+                value={summary.totalPenjualan}
+                formatter={formatCurrency}
+                icon={CurrencyDollarIcon}
+                iconColor="indigo"
+              />
+              
+              <KpiCard
+                title="Total Profit"
+                value={summary.totalProfit}
+                formatter={formatCurrency}
+                icon={BanknotesIcon}
+                iconColor="green"
+              />
+              
+              <KpiCard
+                title="Total Transaksi"
+                value={summary.totalTransaksi}
+                formatter={(val) => val}
+                icon={ChartBarIcon}
+                iconColor="blue"
+              />
+              
+              <KpiCard
+                title="Profitabilitas"
+                value={summary.profitabilityRate}
+                formatter={formatPercentage}
+                icon={ReceiptPercentIcon}
+                iconColor="purple"
+              />
             </div>
-          </Card>
-        </div>
-
-        <Charts data={filteredData} />
+            
+            {/* Filter */}
+            <FilterSearch 
+              onFilter={handleFilter} 
+              tujuanList={tujuanList} 
+            />
+            
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {dailyData.length > 0 && (
+                <AdvancedLineChart
+                  title="Tren Penjualan"
+                  data={dailyData}
+                  xAxisKey="date"
+                  yAxisKeys={['total', 'profit']}
+                  yAxisLabels={['Penjualan', 'Profit']}
+                  formatYAxis={formatCurrency}
+                />
+              )}
+              
+              {methodData.length > 0 && (
+                <AdvancedPieChart
+                  title="Penjualan per Metode Pembayaran"
+                  data={methodData}
+                  labelKey="method"
+                  valueKey="value"
+                  formatValue={formatCurrency}
+                />
+              )}
+            </div>
+            
+            {/* Recent Transactions */}
+            <Card className="mb-8">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white">
+                  Transaksi Terbaru
+                </h3>
+                <a 
+                  href="/transaksi" 
+                  className="text-sm text-indigo-600 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
+                >
+                  Lihat Semua
+                </a>
+              </div>
+              
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Tanggal
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Produk
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Harga Jual
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Profit
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                    {currentItems.length > 0 ? (
+                      currentItems.map((t) => (
+                        <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            {new Date(t.tanggal).toLocaleDateString('id-ID')}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            {t.customer.nama}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
+                            {t.produk}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
+                            {formatCurrency(t.hargaJual)}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
+                            {formatCurrency(t.hargaJual - t.hargaAsli)}
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="5" className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                          Tidak ada transaksi yang sesuai dengan filter
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              
+              {/* Pagination */}
+              {filteredData.length > 0 && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              )}
+            </Card>
+          </>
+        )}
       </div>
     </Layout>
   );

@@ -6,40 +6,138 @@ export default async function handler(req, res) {
     const data = await getAllTransaksi();
     res.status(200).json(data);
   } else if (req.method === 'POST') {
-    try {
-      let transaksi = req.body;
-      console.log('Received transaksi data:', transaksi); // log request body
-      // Convert customerId to integer
-      if (typeof transaksi.customerId === 'string') {
-        transaksi.customerId = parseInt(transaksi.customerId);
+    // Check if this is a bulk import request
+    if (req.body.bulkImport && Array.isArray(req.body.data)) {
+      try {
+        const results = [];
+        const errors = [];
+
+        // Validate the data array
+        if (req.body.data.length === 0) {
+          return res.status(400).json({ 
+            message: 'No data provided for bulk import',
+            success: false,
+            imported: 0,
+            failed: 0
+          });
+        }
+
+        // Process each record in the array
+        for (const item of req.body.data) {
+          try {
+            // Skip null or undefined items
+            if (!item) {
+              errors.push({
+                item: null,
+                error: 'Item is null or undefined'
+              });
+              continue;
+            }
+            
+            let transaksi = { ...item };
+            
+            // Convert customerId to integer
+            if (typeof transaksi.customerId === 'string') {
+              transaksi.customerId = parseInt(transaksi.customerId);
+            }
+            
+            // Validate customerId
+            if (!transaksi.customerId || isNaN(transaksi.customerId)) {
+              throw new Error('Invalid customer ID');
+            }
+            
+            // Convert tanggal to Date
+            if (typeof transaksi.tanggal === 'string') {
+              transaksi.tanggal = new Date(transaksi.tanggal);
+            }
+            
+            // Validate tanggal
+            if (!(transaksi.tanggal instanceof Date) || isNaN(transaksi.tanggal.getTime())) {
+              transaksi.tanggal = new Date(); // Default to current date if invalid
+            }
+            
+            // Convert hargaAsli and hargaJual to integer
+            transaksi.hargaAsli = parseInt(transaksi.hargaAsli);
+            if (isNaN(transaksi.hargaAsli)) transaksi.hargaAsli = 0;
+            
+            transaksi.hargaJual = parseInt(transaksi.hargaJual);
+            if (isNaN(transaksi.hargaJual)) transaksi.hargaJual = 0;
+            
+            // Ensure other required fields have defaults
+            transaksi.produk = transaksi.produk || '';
+            transaksi.metode = transaksi.metode || '';
+            transaksi.tujuan = transaksi.tujuan || '';
+            transaksi.tag = transaksi.tag || '';
+            
+            // Remove profit if present (not in schema)
+            if ('profit' in transaksi) {
+              delete transaksi.profit;
+            }
+            
+            const newTransaksi = await addTransaksi(transaksi);
+            results.push(newTransaksi);
+          } catch (error) {
+            errors.push({
+              item,
+              error: error.message
+            });
+          }
+        }
+        
+        res.status(201).json({
+          success: true,
+          imported: results.length,
+          failed: errors.length,
+          results,
+          errors
+        });
+      } catch (error) {
+        console.error('Error bulk importing transaksi:', error);
+        res.status(500).json({ 
+          message: 'Error bulk importing transaksi', 
+          error: error.message,
+          success: false,
+          imported: 0,
+          failed: req.body.data?.length || 0
+        });
       }
-      // Convert tanggal to Date
-      if (typeof transaksi.tanggal === 'string') {
-        transaksi.tanggal = new Date(transaksi.tanggal);
+    } else {
+      // Handle single transaction add
+      try {
+        let transaksi = req.body;
+        console.log('Received transaksi data:', transaksi); // log request body
+        // Convert customerId to integer
+        if (typeof transaksi.customerId === 'string') {
+          transaksi.customerId = parseInt(transaksi.customerId);
+        }
+        // Convert tanggal to Date
+        if (typeof transaksi.tanggal === 'string') {
+          transaksi.tanggal = new Date(transaksi.tanggal);
+        }
+        // Convert hargaAsli and hargaJual to integer, fallback to 0 if NaN
+        transaksi.hargaAsli = parseInt(transaksi.hargaAsli);
+        if (isNaN(transaksi.hargaAsli)) transaksi.hargaAsli = 0;
+        transaksi.hargaJual = parseInt(transaksi.hargaJual);
+        if (isNaN(transaksi.hargaJual)) transaksi.hargaJual = 0;
+        // Log types for debugging
+        console.log('After conversion:', {
+          customerId: transaksi.customerId,
+          tanggal: transaksi.tanggal,
+          hargaAsli: transaksi.hargaAsli,
+          hargaJual: transaksi.hargaJual,
+          typeofHargaAsli: typeof transaksi.hargaAsli,
+          typeofHargaJual: typeof transaksi.hargaJual
+        });
+        // Remove profit if present (not in schema)
+        if ('profit' in transaksi) {
+          delete transaksi.profit;
+        }
+        const newTransaksi = await addTransaksi(transaksi);
+        res.status(201).json(newTransaksi);
+      } catch (error) {
+        console.error('Error adding transaksi:', error);
+        res.status(500).json({ message: 'Error adding transaksi', error: error.message });
       }
-      // Convert hargaAsli and hargaJual to integer, fallback to 0 if NaN
-      transaksi.hargaAsli = parseInt(transaksi.hargaAsli);
-      if (isNaN(transaksi.hargaAsli)) transaksi.hargaAsli = 0;
-      transaksi.hargaJual = parseInt(transaksi.hargaJual);
-      if (isNaN(transaksi.hargaJual)) transaksi.hargaJual = 0;
-      // Log types for debugging
-      console.log('After conversion:', {
-        customerId: transaksi.customerId,
-        tanggal: transaksi.tanggal,
-        hargaAsli: transaksi.hargaAsli,
-        hargaJual: transaksi.hargaJual,
-        typeofHargaAsli: typeof transaksi.hargaAsli,
-        typeofHargaJual: typeof transaksi.hargaJual
-      });
-      // Remove profit if present (not in schema)
-      if ('profit' in transaksi) {
-        delete transaksi.profit;
-      }
-      const newTransaksi = await addTransaksi(transaksi);
-      res.status(201).json(newTransaksi);
-    } catch (error) {
-      console.error('Error adding transaksi:', error);
-      res.status(500).json({ message: 'Error adding transaksi', error: error.message });
     }
   } else if (req.method === 'PUT' && id) {
     try {

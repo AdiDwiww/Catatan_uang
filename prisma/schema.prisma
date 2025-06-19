@@ -1,29 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
 datasource db {
   provider = "sqlite"
   url      = "file:./dev.db"
 }
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 model Transaksi {
-  id          Int      @id @default(autoincrement())
-  customerId  Int
-  tanggal     DateTime
-  produk      String
-  hargaAsli   Int
-  hargaJual   Int
-  metode      String
-  tujuan      String
-  tag         String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  customer    Customer @relation(fields: [customerId], references: [id])
+  id         Int      @id @default(autoincrement())
+  customerId Int
+  tanggal    DateTime
+  produk     String
+  hargaAsli  Int
+  hargaJual  Int
+  metode     String
+  tujuan     String
+  tag        String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  customer   Customer @relation(fields: [customerId], references: [id])
 }
 
 model Customer {
-  id          Int         @id @default(autoincrement())
-  nama        String
-  transaksi   Transaksi[]
-} 
+  id        Int         @id @default(autoincrement())
+  nama      String
+  userId    Int
+  User      User        @relation(fields: [userId], references: [id])
+  transaksi Transaksi[]
+}
+
+model User {
+  id       Int        @id @default(autoincrement())
+  email    String     @unique
+  name     String?
+  Customer Customer[]
+}

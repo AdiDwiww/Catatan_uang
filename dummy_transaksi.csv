@@ -1,0 +1,21 @@
+customerId,tanggal,produk,hargaAsli,hargaJual,metode,tujuan,tag
+11,2025-05-25,Laptop Asus VivoBook,8502850,9203084,Kartu Kredit,Online Shop,Promo
+4,2025-06-18,Smartphone Samsung A53,4122881,4711864,QRIS,Direct Order,Bundle
+10,2025-06-08,Monitor LG 24",1736593,2026025,Kartu Kredit,Dropship,Pre-Order
+1,2025-06-10,RAM DDR4 8GB,441863,540055,Kartu Kredit,Offline Store,Pre-Order
+5,2025-06-07,Keyboard Mechanical,839121,1085921,QRIS,Marketplace,Pre-Order
+4,2025-05-25,Mouse Gaming,250595,350833,Transfer Bank,Online Shop,Pre-Order
+11,2025-06-19,Powerbank 10000mAh,177606,246675,E-Wallet,Dropship,Bundle
+1,2025-05-22,Headphone Sony,1155066,1443832,QRIS,Online Shop,Pre-Order
+9,2025-06-01,Powerbank 10000mAh,176165,244674,Kartu Kredit,Marketplace,Regular
+13,2025-06-09,Smartphone Samsung A53,4183666,4781333,E-Wallet,Marketplace,Bundle
+7,2025-06-07,SSD 500GB,748644,898373,Transfer Bank,Direct Order,Promo
+14,2025-06-16,Monitor LG 24",1877800,2190767,Transfer Bank,Offline Store,Clearance
+10,2025-05-22,Mouse Gaming,260128,364180,Kartu Kredit,Direct Order,Promo
+18,2025-06-10,Speaker Bluetooth,335226,431005,Transfer Bank,Offline Store,Bundle
+12,2025-06-08,Monitor LG 24",1787196,2085062,E-Wallet,Dropship,Clearance
+1,2025-05-31,SSD 500GB,726494,871793,E-Wallet,Marketplace,Clearance
+10,2025-05-22,Headphone Sony,1259774,1574718,Transfer Bank,Marketplace,Bundle
+21,2025-05-21,Laptop Asus VivoBook,8246401,8925516,E-Wallet,Offline Store,Clearance
+13,2025-06-02,Laptop Asus VivoBook,8435197,9129860,Transfer Bank,Dropship,Pre-Order
+18,2025-05-22,Keyboard Mechanical,867431,1122558,E-Wallet,Online Shop,Promo
