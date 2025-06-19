@@ -29,7 +29,6 @@ prisma/migrations/*/migration.sql-journal
 # Others
 *.local
 *.log
-package-lock.json
 
 # Ignore coverage
 coverage/
