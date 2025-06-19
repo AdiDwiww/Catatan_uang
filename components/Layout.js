@@ -45,7 +45,7 @@ export default function Layout({ children }) {
     if (savedCollapsedState !== null) {
       setIsCollapsed(savedCollapsedState === 'true');
     }
-
+    
     // Tambahkan kelas khusus untuk mengelola navigasi dan menghindari flickering
     const handleStart = () => {
       setIsNavigating(true);
@@ -53,7 +53,7 @@ export default function Layout({ children }) {
         sidebarRef.current.classList.add('navigating');
         // Disable transisi selama navigasi untuk mencegah flickering
         sidebarRef.current.style.transition = 'none';
-      }
+    }
       if (mainRef.current) {
         mainRef.current.classList.add('navigating');
         mainRef.current.style.transition = 'none';
@@ -282,7 +282,7 @@ export default function Layout({ children }) {
         {/* Responsive page padding */}
         <div className="pt-20 lg:pt-8 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
           <div className="max-w-7xl mx-auto">
-            {children}
+          {children}
           </div>
         </div>
       </main>
