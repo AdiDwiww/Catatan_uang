@@ -1,0 +1,42 @@
+# Node modules
+node_modules/
+
+# Build output
+.next/
+out/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Env files
+.env
+.env.*
+
+# Prisma
+prisma/dev.db
+prisma/*.db
+prisma/migrations/*/migration.sql-journal
+
+# VSCode
+.vscode/
+
+# Others
+*.local
+*.log
+package-lock.json
+
+# Ignore coverage
+coverage/
+
+# Ignore public build artifacts
+public/*.svg
+!public/next.svg
+!public/vercel.svg
+!public/globe.svg
+!public/window.svg 
