@@ -5,6 +5,9 @@ import MobileHeader from './MobileHeader';
 import MobileMenu from './MobileMenu';
 import NotificationsDropdown from './NotificationsDropdown';
 
+// Simpan state sidebar di level global agar tetap bertahan saat navigasi
+let globalSidebarState = null;
+
 export default function Layout({ children }) {
   const router = useRouter();
   const sidebarRef = useRef(null);
@@ -20,12 +23,30 @@ export default function Layout({ children }) {
     { id: 2, text: 'Laporan bulanan tersedia', time: '1 jam yang lalu', isNew: false },
     { id: 3, text: 'Pengingat: Update data customer', time: '1 hari yang lalu', isNew: false },
   ]);
+  const [isClient, setIsClient] = useState(false);
 
   // Gunakan useMemo untuk menyimpan ukuran sidebar
   const sidebarWidth = useMemo(() => isCollapsed ? '5rem' : '18rem', [isCollapsed]);
 
-  // Periksa value dari localStorage sebelum render pertama
+  // Deteksi client rendering
   useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Efek untuk mengatur state dari localStorage
+  useEffect(() => {
+    if (!isClient) return;
+    
+    // Gunakan state global jika tersedia, jika tidak cek localStorage
+    if (globalSidebarState !== null) {
+      setIsCollapsed(globalSidebarState);
+    } else {
+      const savedState = localStorage.getItem('sidebarCollapsed');
+      if (savedState !== null) {
+        setIsCollapsed(savedState === 'true');
+      }
+    }
+
     // Dark mode check
     const savedMode = localStorage.getItem('darkMode');
     if (savedMode !== null) {
@@ -39,12 +60,11 @@ export default function Layout({ children }) {
       setIsDark(true);
       document.documentElement.classList.add('dark');
     }
-    
-    // Sidebar collapsed state check
-    const savedCollapsedState = localStorage.getItem('sidebarCollapsed');
-    if (savedCollapsedState !== null) {
-      setIsCollapsed(savedCollapsedState === 'true');
-    }
+  }, [isClient]);
+
+  // Effect terpisah untuk menangani navigasi dan event listener
+  useEffect(() => {
+    if (!isClient) return;
     
     // Tambahkan kelas khusus untuk mengelola navigasi dan menghindari flickering
     const handleStart = () => {
@@ -53,7 +73,7 @@ export default function Layout({ children }) {
         sidebarRef.current.classList.add('navigating');
         // Disable transisi selama navigasi untuk mencegah flickering
         sidebarRef.current.style.transition = 'none';
-    }
+      }
       if (mainRef.current) {
         mainRef.current.classList.add('navigating');
         mainRef.current.style.transition = 'none';
@@ -87,6 +107,24 @@ export default function Layout({ children }) {
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
+    
+    return () => {
+      router.events.off('routeChangeStart', handleStart);
+      router.events.off('routeChangeComplete', handleComplete);
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [router, isClient]);
+
+  // Sync isCollapsed dengan globalSidebarState
+  useEffect(() => {
+    if (isClient) {
+      globalSidebarState = isCollapsed;
+    }
+  }, [isCollapsed, isClient]);
+
+  // Effect terpisah untuk CSS styling
+  useEffect(() => {
+    if (!isClient) return;
     
     // Tambahkan CSS untuk transisi sidebar
     const style = document.createElement('style');
@@ -183,21 +221,20 @@ export default function Layout({ children }) {
     document.head.appendChild(style);
     
     return () => {
-      router.events.off('routeChangeStart', handleStart);
-      router.events.off('routeChangeComplete', handleComplete);
-      document.removeEventListener('mousedown', handleOutsideClick);
       document.head.removeChild(style);
     };
-  }, [router, isCollapsed]);
+  }, [isCollapsed, isClient]);
 
   const toggleDarkMode = () => {
     const newMode = !isDark;
     setIsDark(newMode);
-    localStorage.setItem('darkMode', newMode.toString());
-    if (newMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    if (isClient) {
+      localStorage.setItem('darkMode', newMode.toString());
+      if (newMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
   };
 
@@ -224,8 +261,12 @@ export default function Layout({ children }) {
       }, 300); // Sedikit lebih lama dari durasi transisi untuk jaga-jaga
     }
     
+    // Update state lokal dan global
     setIsCollapsed(newState);
-    localStorage.setItem('sidebarCollapsed', newState.toString());
+    if (isClient) {
+      globalSidebarState = newState;
+      localStorage.setItem('sidebarCollapsed', newState.toString());
+    }
   };
   
   const toggleNotifications = (e) => {
@@ -245,13 +286,6 @@ export default function Layout({ children }) {
         notifications={notifications}
       />
 
-      {/* Notifications Dropdown Component */}
-      <NotificationsDropdown
-        showNotifications={showNotifications}
-        notifications={notifications}
-        ref={notificationsRef}
-      />
-
       {/* Mobile Menu Component */}
       <MobileMenu
         isMobileMenuOpen={isMobileMenuOpen}
@@ -261,23 +295,36 @@ export default function Layout({ children }) {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      {/* Desktop Sidebar Component */}
-      <Sidebar 
-        isCollapsed={isCollapsed}
-        toggleSidebar={toggleSidebar}
-        isDark={isDark}
-        toggleDarkMode={toggleDarkMode}
-        toggleNotifications={toggleNotifications}
-        notifications={notifications}
-        router={router}
-        ref={sidebarRef}
-      />
+      {/* Desktop Sidebar Component - hanya di client side */}
+      {isClient && (
+        <>
+          <Sidebar 
+            isCollapsed={isCollapsed}
+            toggleSidebar={toggleSidebar}
+            isDark={isDark}
+            toggleDarkMode={toggleDarkMode}
+            toggleNotifications={toggleNotifications}
+            notifications={notifications}
+            router={router}
+            ref={sidebarRef}
+          />
+          
+          {/* Notifications Dropdown Component */}
+          <NotificationsDropdown
+            showNotifications={showNotifications}
+            notifications={notifications}
+            ref={notificationsRef}
+          />
+        </>
+      )}
       
       {/* Main Content */}
       <main 
         ref={mainRef} 
         className={`main-content ${isNavigating ? 'navigating' : ''} mobile-content`} 
-        style={{ marginLeft: typeof window !== 'undefined' && window.innerWidth >= 1024 ? sidebarWidth : '0' }}
+        style={{ 
+          marginLeft: isClient && window.innerWidth >= 1024 ? sidebarWidth : '0'
+        }}
       >
         {/* Responsive page padding */}
         <div className="pt-20 lg:pt-8 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
