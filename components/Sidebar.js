@@ -30,33 +30,26 @@ const Sidebar = forwardRef(function Sidebar({ isCollapsed, toggleSidebar, isDark
     await signOut({ redirect: true, callbackUrl: '/auth/signin' });
   };
 
-  // Render logo differently at client and server side
-  let logoContent = null;
-  if (typeof window !== 'undefined') {
-    // Client-side only rendering
-    logoContent = (
-      <div className={`flex items-center ${isCollapsed ? 'justify-center px-2 py-6' : 'px-6 py-6'}`}>
-        <div 
-          onClick={toggleSidebar}
-          className="flex items-center cursor-pointer"
-        >
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
-            <div className="text-white font-bold text-lg">C</div>
-          </div>
-          {!isCollapsed && (
-            <div className="ml-3">
-              <div className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
-                Catatan Uang
-              </div>
-            </div>
-          )}
+  // Render logo secara konsisten di server dan client
+  let logoContent = (
+    <div className={`flex items-center ${isCollapsed ? 'justify-center px-2 py-6' : 'px-6 py-6'}`}>
+      <div 
+        onClick={toggleSidebar}
+        className="flex items-center cursor-pointer"
+      >
+        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-md">
+          <div className="text-white font-bold text-lg">C</div>
         </div>
+        {!isCollapsed && (
+          <div className="ml-3">
+            <div className="text-xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent whitespace-nowrap">
+              Catatan Uang
+            </div>
+          </div>
+        )}
       </div>
-    );
-  } else {
-    // Server-side rendering with minimal content
-    logoContent = <div className={`${isCollapsed ? 'h-20' : 'h-20 px-6'} py-6`}></div>;
-  }
+    </div>
+  );
 
   return (
     <div 

@@ -31,6 +31,7 @@ export default function Layout({ children }) {
     { id: 3, text: 'Pengingat: Update data customer', time: '1 hari yang lalu', isNew: false },
   ]);
   const [isClient, setIsClient] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
   
   // Ukuran sidebar dalam pixel (bukan rem) untuk konsistensi absolut
   const collapsedWidth = 80; // 5rem = 80px
@@ -161,7 +162,6 @@ export default function Layout({ children }) {
         /* Prevent text flickering in sidebar */
         .sidebar-text {
           opacity: ${isCollapsed ? '0' : '1'};
-          visibility: ${isCollapsed ? 'hidden' : 'visible'};
           white-space: nowrap;
           transition: opacity 200ms ease;
         }
@@ -577,6 +577,12 @@ export default function Layout({ children }) {
     }
   };
 
+  useEffect(() => { setIsHydrated(true); }, []);
+
+  if (!isHydrated) {
+    return <div />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {/* Mobile Header Component */}
@@ -599,29 +605,26 @@ export default function Layout({ children }) {
       />
 
       {/* Desktop Sidebar Component */}
-      {isClient && (
-        <>
-          <div className="sidebar" ref={sidebarRef}>
-            <div className="sidebar-inner h-full">
-              <Sidebar 
-                isCollapsed={isCollapsed}
-                toggleSidebar={toggleSidebar}
-                isDark={isDark}
-                toggleDarkMode={toggleDarkMode}
-                toggleNotifications={toggleNotifications}
-                notifications={notifications}
-                router={router}
-              />
-            </div>
+      <>
+        <div className="sidebar" ref={sidebarRef}>
+          <div className="sidebar-inner h-full">
+            <Sidebar 
+              isCollapsed={isCollapsed}
+              toggleSidebar={toggleSidebar}
+              isDark={isDark}
+              toggleDarkMode={toggleDarkMode}
+              toggleNotifications={toggleNotifications}
+              notifications={notifications}
+              router={router}
+            />
           </div>
-          
-          <NotificationsDropdown
-            showNotifications={showNotifications}
-            notifications={notifications}
-            ref={notificationsRef}
-          />
-        </>
-      )}
+        </div>
+        <NotificationsDropdown
+          showNotifications={showNotifications}
+          notifications={notifications}
+          ref={notificationsRef}
+        />
+      </>
       
       {/* Main Content */}
       <main ref={mainRef} className="main-content mobile-content overflow-y-auto">
