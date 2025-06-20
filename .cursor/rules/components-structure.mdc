@@ -1,0 +1,26 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Components Structure
+
+The application's UI is built from these key components:
+
+- [Layout.js](mdc:components/Layout.js): Main layout wrapper containing the sidebar and page content
+- [Sidebar.js](mdc:components/Sidebar.js): Navigation sidebar with links to main sections
+- [TransaksiForm.js](mdc:components/TransaksiForm.js): Form for creating and editing transactions
+- [Modal.js](mdc:components/Modal.js): Reusable modal component used for forms and confirmations
+- [Charts.js](mdc:components/Charts.js): Basic chart visualizations for financial data
+- [AdvancedCharts.js](mdc:components/AdvancedCharts.js): More complex data visualizations
+- [KpiCard.js](mdc:components/KpiCard.js): Key performance indicator display cards
+- [Card.js](mdc:components/Card.js): General-purpose card component for content sections
+- [FileImportExport.js](mdc:components/FileImportExport.js): Handles CSV import/export functionality
+
+## Component Flow
+
+Most pages follow this component hierarchy:
+1. `_app.js` renders the `Layout` component
+2. `Layout` contains the `Sidebar` and page content
+3. Pages render specific components like `TransaksiForm`, `Charts` or data tables
+

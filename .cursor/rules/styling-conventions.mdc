@@ -1,0 +1,25 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Styling Conventions
+
+The application uses a combination of Tailwind CSS and custom CSS:
+
+- [styles/globals.css](mdc:styles/globals.css): Global styles, including custom animations and utilities
+- [tailwind.config.js](mdc:tailwind.config.js): Tailwind configuration and theme customization
+
+## CSS Structure
+
+- Base styling is provided by Tailwind utility classes
+- Custom components often use a combination of Tailwind and custom CSS classes
+- Page transitions use CSS animations defined in globals.css
+- Responsive design breakpoints follow Tailwind's default configuration
+
+## Animation Guidelines
+
+- Page transitions use transform and opacity properties for performance
+- Hardware acceleration is enabled with transform, backface-visibility, and perspective properties
+- Progress bars and loading states use CSS animations with custom timing functions
+

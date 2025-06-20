@@ -220,7 +220,7 @@ function MyApp({ Component, pageProps: { session, ...pageProps } }) {
   return (
     <SessionProvider session={session}>
       <div className={`app-wrapper ${loading ? 'page-loading' : ''}`}>
-        <Component {...pageProps} />
+      <Component {...pageProps} />
       </div>
     </SessionProvider>
   );

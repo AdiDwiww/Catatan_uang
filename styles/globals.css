@@ -106,8 +106,11 @@ a, button, input,
 /* Fix untuk flicker di webkit browsers */
 .no-flicker {
   -webkit-transform: translate3d(0,0,0);
+  transform: translate3d(0,0,0);
   -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
   -webkit-perspective: 1000;
+  perspective: 1000;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -274,6 +277,48 @@ textarea:focus {
 /* Table styles */
 .table-container {
   @apply overflow-x-auto rounded-lg border border-gray-200 dark:border-gray-700;
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Responsive Table */
+.responsive-table {
+  width: 100%;
+  margin-bottom: 1rem;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-table table {
+  width: 100%;
+  table-layout: auto;
+  border-collapse: collapse;
+}
+
+.responsive-table th, 
+.responsive-table td {
+  white-space: nowrap;
+  padding: 0.75rem 1rem;
+}
+
+/* Tabel responsif yang menyesuaikan lebar */
+.auto-fit-table {
+  width: 100%;
+  table-layout: auto;
+}
+
+.auto-fit-table th,
+.auto-fit-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.auto-fit-table th.w-auto,
+.auto-fit-table td.w-auto {
+  width: auto;
+  white-space: normal;
 }
 
 .table-header {

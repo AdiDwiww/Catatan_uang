@@ -1,0 +1,29 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Catatan Uang - Project Overview
+
+This is a Next.js financial tracking application with the following structure:
+
+- `/pages`: Main page routes with corresponding API endpoints in `/pages/api`
+- `/components`: Reusable UI components
+- `/lib`: Utility functions, hooks, and database connection
+- `/prisma`: Database schema and migrations
+- `/styles`: Global CSS styles
+- `/scripts`: Utility scripts for data generation and setup
+
+The application uses:
+- Next.js for frontend and API routes
+- Prisma as ORM for database interactions
+- NextAuth.js for authentication
+- Tailwind CSS for styling
+- heroicons for iconography
+
+## Entry Points
+
+- Main application entry: [pages/_app.js](mdc:pages/_app.js)
+- Dashboard page: [pages/index.js](mdc:pages/index.js)
+- Layout wrapper: [components/Layout.js](mdc:components/Layout.js)
+

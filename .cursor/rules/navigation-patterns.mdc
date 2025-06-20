@@ -1,0 +1,31 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+# Navigation Patterns
+
+## Main Navigation
+
+The application uses Next.js routing with the following key navigation patterns:
+
+- Sidebar navigation: Primary way to navigate between main sections
+- Breadcrumbs: Used for hierarchical navigation within sections
+- Modal-based forms: Forms often appear in modals rather than separate pages
+
+## Key Routes
+
+- [pages/index.js](mdc:pages/index.js): Dashboard with KPIs and summary charts
+- [pages/transaksi.js](mdc:pages/transaksi.js): Transaction list and management
+- [pages/customer.js](mdc:pages/customer.js): Customer management
+- [pages/laporan.js](mdc:pages/laporan.js): Report generation and viewing
+- [src/app/auth/signin/page.tsx](mdc:src/app/auth/signin/page.tsx): Sign in page
+- [src/app/auth/signup/page.tsx](mdc:src/app/auth/signup/page.tsx): Sign up page
+
+## Transition Effects
+
+Page transitions include:
+- Fade transitions between main pages
+- Progress bar animations during page loading
+- Staggered animations for content elements
+
