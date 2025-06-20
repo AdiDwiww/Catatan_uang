@@ -13,6 +13,7 @@ export default function Layout({ children }) {
   const sidebarRef = useRef(null);
   const mainRef = useRef(null);
   const styleTagRef = useRef(null);
+  const noAnimationStyleRef = useRef(null);
   const [isDark, setIsDark] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -25,317 +26,385 @@ export default function Layout({ children }) {
     { id: 3, text: 'Pengingat: Update data customer', time: '1 hari yang lalu', isNew: false },
   ]);
   const [isClient, setIsClient] = useState(false);
-  const [isDOMLoaded, setIsDOMLoaded] = useState(false);
+  
+  // Ukuran sidebar dalam pixel (bukan rem) untuk konsistensi absolut
+  const collapsedWidth = 80; // 5rem = 80px
+  const expandedWidth = 288; // 18rem = 288px
+  const sidebarWidth = isCollapsed ? collapsedWidth : expandedWidth;
 
-  // Gunakan useMemo untuk menyimpan ukuran sidebar
-  const sidebarWidth = useMemo(() => isCollapsed ? '5rem' : '18rem', [isCollapsed]);
+  // Fungsi helper untuk safely remove sebuah element
+  const safeRemoveElement = (element) => {
+    try {
+      if (element && element.parentNode) {
+        element.parentNode.removeChild(element);
+      }
+    } catch (err) {
+      console.log('Error removing element:', err);
+    }
+  };
 
   // Deteksi client rendering dan inisialisasi state
   useEffect(() => {
     setIsClient(true);
     
-    // Tunggu DOM selesai dirender sebelum mengaplikasikan transformasi visual
-    // Ini mencegah "flash of unstyled content" saat halaman pertama kali dimuat
-    window.requestAnimationFrame(() => {
-      setIsDOMLoaded(true);
-    });
-    
-    // Gunakan state global jika tersedia, jika tidak cek localStorage
-    if (globalSidebarState !== null) {
-      setIsCollapsed(globalSidebarState);
-    } else {
+    // Matikan semua animasi CSS saat halaman pertama kali dimuat
+    try {
+      const noAnimationStyle = document.createElement('style');
+      noAnimationStyle.textContent = '*, *::before, *::after { transition: none !important; animation: none !important; }';
+      document.head.appendChild(noAnimationStyle);
+      noAnimationStyleRef.current = noAnimationStyle;
+      
+      // Load sidebar state
+      if (globalSidebarState !== null) {
+        setIsCollapsed(globalSidebarState);
+      } else {
+        try {
+          const savedState = localStorage.getItem('sidebarCollapsed');
+          if (savedState !== null) {
+            setIsCollapsed(savedState === 'true');
+            globalSidebarState = savedState === 'true';
+          }
+        } catch (err) {
+          // Antisipasi jika localStorage tidak tersedia
+          console.log('LocalStorage not available');
+        }
+      }
+
+      // Dark mode check
       try {
-        const savedState = localStorage.getItem('sidebarCollapsed');
-        if (savedState !== null) {
-          setIsCollapsed(savedState === 'true');
-          globalSidebarState = savedState === 'true';
+        const savedMode = localStorage.getItem('darkMode');
+        if (savedMode !== null) {
+          setIsDark(savedMode === 'true');
+          if (savedMode === 'true') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+          setIsDark(true);
+          document.documentElement.classList.add('dark');
         }
       } catch (err) {
-        // Antisipasi jika localStorage tidak tersedia
         console.log('LocalStorage not available');
       }
-    }
-
-    // Dark mode check
-    try {
-      const savedMode = localStorage.getItem('darkMode');
-      if (savedMode !== null) {
-        setIsDark(savedMode === 'true');
-        if (savedMode === 'true') {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
-      } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        setIsDark(true);
-        document.documentElement.classList.add('dark');
-      }
+      
+      // Hapus style noAnimation setelah load awal selesai
+      setTimeout(() => {
+        safeRemoveElement(noAnimationStyle);
+        injectStyles();
+      }, 300);
     } catch (err) {
-      // Antisipasi jika localStorage tidak tersedia
-      console.log('LocalStorage not available');
+      console.log('Error in init effect:', err);
     }
+    
+    return () => {
+      if (noAnimationStyleRef.current) {
+        safeRemoveElement(noAnimationStyleRef.current);
+      }
+    };
   }, []);
+  
+  // Fungsi untuk menginjeksi CSS styles
+  const injectStyles = () => {
+    if (!isClient) return;
+    
+    try {
+      // Hapus style lama jika ada
+      if (styleTagRef.current) {
+        safeRemoveElement(styleTagRef.current);
+        styleTagRef.current = null;
+      }
+      
+      // Buat style tag baru
+      const style = document.createElement('style');
+      style.id = 'sidebar-dynamic-styles';
+      
+      // Set CSS dengan nilai absolut dalam pixel bukan rem
+      style.textContent = `
+        /* Sidebar styles */
+        .sidebar {
+          position: fixed;
+          top: 0;
+          left: 0;
+          height: 100vh;
+          width: ${sidebarWidth}px;
+          z-index: 30;
+          box-sizing: border-box;
+          will-change: transform;
+          transform: translateZ(0);
+          overflow: hidden;
+          background-color: white;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        
+        .dark .sidebar {
+          background-color: #1f2937;
+        }
 
-  // Effect terpisah untuk menangani navigasi dan event listener
+        /* Disable all transitions when navigating */
+        .navigating,
+        .navigating *,
+        .navigating *::before,
+        .navigating *::after {
+          transition: none !important;
+          animation: none !important;
+        }
+        
+        /* Apply transition only when not navigating */
+        .sidebar:not(.navigating) {
+          transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Main content styles */
+        .main-content {
+          margin-left: ${sidebarWidth}px;
+          position: relative;
+          will-change: transform;
+          transform: translateZ(0);
+        }
+        
+        /* Optimize main content transition */
+        .main-content:not(.navigating) {
+          transition: margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Prevent text flickering in sidebar */
+        .sidebar-text {
+          opacity: ${isCollapsed ? '0' : '1'};
+          visibility: ${isCollapsed ? 'hidden' : 'visible'};
+          white-space: nowrap;
+          transition: opacity 200ms ease;
+        }
+        
+        /* Prevent layout shifts by fixing sidebar inner elements */
+        .sidebar-inner {
+          width: 100%;
+          height: 100%;
+          position: relative;
+          transform: translateZ(0);
+          backface-visibility: hidden;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 1023px) {
+          .sidebar {
+            display: none;
+          }
+          
+          .main-content {
+            margin-left: 0 !important;
+          }
+        }
+      `;
+      
+      document.head.appendChild(style);
+      styleTagRef.current = style;
+    } catch (err) {
+      console.log('Error injecting styles:', err);
+    }
+  };
+
+  // Effect untuk mengupdate CSS saat sidebar state berubah
+  useEffect(() => {
+    if (!isClient) return;
+    injectStyles();
+  }, [isCollapsed, isClient, sidebarWidth]);
+
+  // Effect untuk menangani navigasi
   useEffect(() => {
     if (!isClient) return;
     
-    // Persiapkan penanganan navigasi
-    const handleBeforeHistoryChange = () => {
-      // Bekukan posisi sidebar sebelum navigasi
-      if (sidebarRef.current) {
-        // Simpan posisi sidebar saat ini untuk dipertahankan selama navigasi
-        const currentWidth = sidebarRef.current.offsetWidth;
-        sidebarRef.current.style.width = `${currentWidth}px`;
-        sidebarRef.current.style.transition = 'none';
-      }
-      
-      // Bekukan posisi main content juga
-      if (mainRef.current) {
-        const currentMargin = window.getComputedStyle(mainRef.current).marginLeft;
-        mainRef.current.style.marginLeft = currentMargin;
-        mainRef.current.style.transition = 'none';
-      }
-    };
-    
-    // Tambahkan kelas khusus untuk mengelola navigasi dan menghindari flickering
-    const handleStart = (url) => {
-      // Jangan lakukan apapun jika hanya navigasi ke halaman yang sama dengan query parameter berbeda
-      if (url.split('?')[0] === router.asPath.split('?')[0]) return;
-      
-      setIsNavigating(true);
-      handleBeforeHistoryChange();
-    };
-
-    const handleComplete = (url) => {
-      // Jangan lakukan apapun jika hanya navigasi ke halaman yang sama dengan query parameter berbeda
-      if (url.split('?')[0] === router.asPath.split('?')[0]) return;
-      
-      // Tunggu sebentar sebelum mengaktifkan kembali transisi
-      // Perpanjang waktu tunggu untuk memastikan page sudah sepenuhnya dirender
-      setTimeout(() => {
-        setIsNavigating(false);
+    // Freeze layout selama navigasi untuk mencegah flicker
+    const freezeLayoutForNavigation = () => {
+      try {
+        // Tambahkan class navigating ke body untuk mempengaruhi seluruh halaman
+        document.body.classList.add('navigating');
+        
+        // Freeze sidebar
         if (sidebarRef.current) {
-          sidebarRef.current.style.transition = '';
-          sidebarRef.current.style.width = '';
+          const currentWidth = sidebarRef.current.offsetWidth;
+          sidebarRef.current.style.width = `${currentWidth}px`;
         }
+        
+        // Freeze main content
         if (mainRef.current) {
-          mainRef.current.style.transition = '';
-          mainRef.current.style.marginLeft = '';
+          const currentMargin = window.getComputedStyle(mainRef.current).marginLeft;
+          mainRef.current.style.marginLeft = currentMargin;
         }
-      }, 300);
-      setIsMobileMenuOpen(false);
-    };
-    
-    router.events.on('routeChangeStart', handleStart);
-    router.events.on('routeChangeComplete', handleComplete);
-    router.events.on('beforeHistoryChange', handleBeforeHistoryChange);
-    
-    // Setup event listener untuk click outside notifikasi
-    const handleOutsideClick = (event) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
-        setShowNotifications(false);
+      } catch (err) {
+        console.log('Error freezing layout:', err);
       }
     };
 
-    document.addEventListener('mousedown', handleOutsideClick);
+    const handleStart = (url) => {
+      try {
+        // Abaikan navigasi dalam halaman yang sama atau hanya perbedaan query params
+        if (url.split('?')[0] === router.asPath.split('?')[0]) {
+          return;
+        }
+        
+        setIsNavigating(true);
+        freezeLayoutForNavigation();
+      } catch (err) {
+        console.log('Error handling navigation start:', err);
+      }
+    };
     
-    // Persiapkan clean-up untuk mencegah memory leak dan konflik listener
+    const handleComplete = (url) => {
+      try {
+        // Abaikan navigasi dalam halaman yang sama atau hanya perbedaan query params
+        if (url.split('?')[0] === router.asPath.split('?')[0]) {
+          return;
+        }
+        
+        // Delay untuk memastikan halaman sepenuhnya dirender
+        // sebelum mengembalikan animasi
+        setTimeout(() => {
+          try {
+            setIsNavigating(false);
+            document.body.classList.remove('navigating');
+            
+            if (sidebarRef.current) {
+              sidebarRef.current.style.width = '';
+            }
+            
+            if (mainRef.current) {
+              mainRef.current.style.marginLeft = '';
+            }
+          } catch (err) {
+            console.log('Error resetting layout after navigation:', err);
+          }
+        }, 400); // Lebih lama untuk memastikan stabilitas
+        
+        setIsMobileMenuOpen(false);
+      } catch (err) {
+        console.log('Error handling navigation complete:', err);
+      }
+    };
+    
+    const handleBeforeHistoryChange = () => {
+      try {
+        freezeLayoutForNavigation();
+      } catch (err) {
+        console.log('Error handling history change:', err);
+      }
+    };
+    
+    // Handle klik di luar notification dropdown
+    const handleOutsideClick = (event) => {
+      try {
+        if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+          setShowNotifications(false);
+        }
+      } catch (err) {
+        console.log('Error handling outside click:', err);
+      }
+    };
+    
+    try {
+      // Register event listeners
+      router.events.on('routeChangeStart', handleStart);
+      router.events.on('routeChangeComplete', handleComplete);
+      router.events.on('beforeHistoryChange', handleBeforeHistoryChange);
+      document.addEventListener('mousedown', handleOutsideClick);
+    } catch (err) {
+      console.log('Error registering event listeners:', err);
+    }
+    
     return () => {
-      router.events.off('routeChangeStart', handleStart);
-      router.events.off('routeChangeComplete', handleComplete);
-      router.events.off('beforeHistoryChange', handleBeforeHistoryChange);
-      document.removeEventListener('mousedown', handleOutsideClick);
+      try {
+        router.events.off('routeChangeStart', handleStart);
+        router.events.off('routeChangeComplete', handleComplete);
+        router.events.off('beforeHistoryChange', handleBeforeHistoryChange);
+        document.removeEventListener('mousedown', handleOutsideClick);
+        document.body.classList.remove('navigating');
+      } catch (err) {
+        console.log('Error cleaning up event listeners:', err);
+      }
     };
   }, [router, isClient]);
 
-  // Effect terpisah untuk CSS styling - create once, update when needed
-  useEffect(() => {
-    if (!isClient) return;
-    
-    // Jangan inject style jika belum DOMLoaded untuk menghindari FOUC
-    if (!isDOMLoaded) return;
-    
-    // Gunakan ref untuk menyimpan elemen style
-    if (!styleTagRef.current) {
-      const style = document.createElement('style');
-      style.id = 'sidebar-dynamic-styles';
-      styleTagRef.current = style;
-      document.head.appendChild(style);
-    }
-    
-    // Update konten CSS style tag jika sudah ada
-    styleTagRef.current.innerHTML = `
-      /* Set fixed width for the sidebar in px untuk mencegah animasi reflow */
-      .sidebar {
-        position: fixed;
-        height: 100%;
-        top: 0;
-        left: 0;
-        width: ${isCollapsed ? '5rem' : '18rem'};
-        will-change: width;
-        z-index: 30;
-        overflow-x: hidden;
-      }
-      
-      /* Hanya animasikan saat tidak dalam keadaan navigasi untuk mencegah flickering */
-      .sidebar:not(.navigating) {
-        transition: width 250ms cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      
-      /* Gunakan transform untuk performance yang lebih baik */
-      .sidebar-inner {
-        width: 100%;
-        height: 100%;
-        backface-visibility: hidden;
-        transform: translateZ(0);
-      }
-      
-      /* Optimasi untuk main content margin */
-      .main-content {
-        margin-left: ${isCollapsed ? '5rem' : '18rem'};
-        will-change: margin-left;
-      }
-      
-      /* Animation hanya saat tidak navigasi */
-      .main-content:not(.navigating) {
-        transition: margin-left 250ms cubic-bezier(0.4, 0, 0.2, 1);
-      }
-      
-      /* Prevent text from flickering during sidebar transitions */
-      .sidebar span, .sidebar p, .sidebar div {
-        white-space: nowrap;
-        overflow: hidden;
-      }
-      
-      /* Mobile optimizations */
-      @media (max-width: 1024px) {
-        .main-content {
-          margin-left: 0;
-        }
-        
-        .mobile-header {
-          height: 64px;
-          padding: 0 16px;
-        }
-        
-        .mobile-menu {
-          width: 85%;
-          max-width: 320px;
-        }
-        
-        .mobile-menu-content {
-          padding: 24px 16px;
-          padding-top: 80px;
-        }
-        
-        .mobile-nav-item {
-          border-radius: 12px;
-          margin-bottom: 4px;
-          transition: background-color 0.2s ease;
-        }
-        
-        /* Safe area inset for modern mobile devices */
-        .mobile-header {
-          padding-top: env(safe-area-inset-top);
-          padding-left: env(safe-area-inset-left);
-          padding-right: env(safe-area-inset-right);
-          height: calc(64px + env(safe-area-inset-top));
-        }
-        
-        .mobile-menu {
-          padding-top: env(safe-area-inset-top);
-          padding-bottom: env(safe-area-inset-bottom);
-          padding-left: env(safe-area-inset-left);
-        }
-        
-        .mobile-content {
-          padding-bottom: env(safe-area-inset-bottom);
-          padding-top: calc(64px + env(safe-area-inset-top));
-        }
-        
-        /* Better touch targets */
-        button, a {
-          min-height: 44px;
-          min-width: 44px;
-        }
-      }
-
-      /* Add fadeIn animation for notifications */
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
-      .animate-fadeIn {
-        animation: fadeIn 0.2s ease-out forwards;
-      }
-    `;
-    
-    return () => {
-      // Clean up pada unmount
-      if (styleTagRef.current) {
-        document.head.removeChild(styleTagRef.current);
-        styleTagRef.current = null;
-      }
-    };
-  }, [isCollapsed, isClient, isDOMLoaded]);
-
   const toggleDarkMode = () => {
-    const newMode = !isDark;
-    setIsDark(newMode);
-    if (isClient) {
-      try {
-        localStorage.setItem('darkMode', newMode.toString());
-        if (newMode) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
+    try {
+      const newMode = !isDark;
+      setIsDark(newMode);
+      if (isClient) {
+        try {
+          localStorage.setItem('darkMode', newMode.toString());
+          if (newMode) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (err) {
+          console.log('LocalStorage not available');
         }
-      } catch (err) {
-        console.log('LocalStorage not available');
       }
+    } catch (err) {
+      console.log('Error toggling dark mode:', err);
     }
   };
 
   const toggleMobileMenu = () => {
-    setIsMobileMenuOpen(!isMobileMenuOpen);
+    try {
+      setIsMobileMenuOpen(!isMobileMenuOpen);
+    } catch (err) {
+      console.log('Error toggling mobile menu:', err);
+    }
   };
   
+  // Tambahkan debounce sederhana untuk mencegah toggle berulang
   const toggleSidebar = () => {
-    // Disable transition during navigation
-    if (isNavigating) return;
-    
-    // Mencegah multiple toggle terlalu cepat dengan toggle locking
-    if (sidebarRef.current && sidebarRef.current.dataset.toggling === 'true') return;
-    
-    // Set toggle lock
-    if (sidebarRef.current) {
-      sidebarRef.current.dataset.toggling = 'true';
+    try {
+      // Mencegah toggle selama navigasi
+      if (isNavigating) return;
       
-      // Remove lock setelah transisi selesai
-      setTimeout(() => {
-        if (sidebarRef.current) sidebarRef.current.dataset.toggling = 'false';
-      }, 300);
-    }
-    
-    const newState = !isCollapsed;
-    
-    // Update state lokal dan global
-    setIsCollapsed(newState);
-    if (isClient) {
-      globalSidebarState = newState;
-      try {
-        localStorage.setItem('sidebarCollapsed', newState.toString());
-      } catch (err) {
-        console.log('LocalStorage not available');
+      // Mencegah toggle berulang cepat
+      if (sidebarRef.current && sidebarRef.current.dataset.toggling === 'true') return;
+      
+      if (sidebarRef.current) {
+        sidebarRef.current.dataset.toggling = 'true';
+        
+        const newState = !isCollapsed;
+        
+        // Update state lokal dan global
+        setIsCollapsed(newState);
+        globalSidebarState = newState;
+        
+        try {
+          localStorage.setItem('sidebarCollapsed', newState.toString());
+        } catch (err) {
+          console.log('LocalStorage not available');
+        }
+        
+        // Reset toggling state setelah animasi selesai
+        setTimeout(() => {
+          try {
+            if (sidebarRef.current) {
+              sidebarRef.current.dataset.toggling = 'false';
+            }
+          } catch (err) {
+            console.log('Error resetting toggle state:', err);
+          }
+        }, 350);
       }
+    } catch (err) {
+      console.log('Error toggling sidebar:', err);
     }
   };
   
   const toggleNotifications = (e) => {
-    if (e) e.stopPropagation();
-    setShowNotifications(!showNotifications);
+    try {
+      if (e) e.stopPropagation();
+      setShowNotifications(!showNotifications);
+    } catch (err) {
+      console.log('Error toggling notifications:', err);
+    }
   };
+  
+  // Class untuk sidebar dan main content
+  const sidebarClass = `sidebar ${isNavigating ? 'navigating' : ''}`;
+  const mainContentClass = `main-content ${isNavigating ? 'navigating' : ''} mobile-content`;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -358,19 +427,22 @@ export default function Layout({ children }) {
         setIsMobileMenuOpen={setIsMobileMenuOpen}
       />
 
-      {/* Desktop Sidebar dan Notifications Component - render hanya setelah client side */}
-      {isClient && isDOMLoaded && (
+      {/* Desktop Sidebar Component */}
+      {isClient && (
         <>
-          <Sidebar 
-            isCollapsed={isCollapsed}
-            toggleSidebar={toggleSidebar}
-            isDark={isDark}
-            toggleDarkMode={toggleDarkMode}
-            toggleNotifications={toggleNotifications}
-            notifications={notifications}
-            router={router}
-            ref={sidebarRef}
-          />
+          <div className={sidebarClass} ref={sidebarRef}>
+            <div className="sidebar-inner h-full">
+              <Sidebar 
+                isCollapsed={isCollapsed}
+                toggleSidebar={toggleSidebar}
+                isDark={isDark}
+                toggleDarkMode={toggleDarkMode}
+                toggleNotifications={toggleNotifications}
+                notifications={notifications}
+                router={router}
+              />
+            </div>
+          </div>
           
           <NotificationsDropdown
             showNotifications={showNotifications}
@@ -381,11 +453,7 @@ export default function Layout({ children }) {
       )}
       
       {/* Main Content */}
-      <main 
-        ref={mainRef} 
-        className={`main-content ${isNavigating ? 'navigating' : ''} mobile-content`}
-      >
-        {/* Tambahkan placeholder div untuk mencegah konten bergeser saat sidebar dimuat */}
+      <main ref={mainRef} className={mainContentClass}>
         <div className="pt-20 lg:pt-8 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
           <div className="max-w-7xl mx-auto">
             {children}
