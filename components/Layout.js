@@ -20,6 +20,7 @@ export default function Layout({ children }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const notificationsRef = useRef(null);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [pageTransition, setPageTransition] = useState('');
   const [notifications] = useState([
     { id: 1, text: 'Transaksi baru telah ditambahkan', time: '5 menit yang lalu', isNew: true },
     { id: 2, text: 'Laporan bulanan tersedia', time: '1 jam yang lalu', isNew: false },
@@ -135,36 +136,18 @@ export default function Layout({ children }) {
           overflow: hidden;
           background-color: white;
           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+          transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
         
         .dark .sidebar {
           background-color: #1f2937;
         }
 
-        /* Disable all transitions when navigating */
-        .navigating,
-        .navigating *,
-        .navigating *::before,
-        .navigating *::after {
-          transition: none !important;
-          animation: none !important;
-        }
-        
-        /* Apply transition only when not navigating */
-        .sidebar:not(.navigating) {
-          transition: width 300ms cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        
         /* Main content styles */
         .main-content {
           margin-left: ${sidebarWidth}px;
+          min-height: 100vh;
           position: relative;
-          will-change: transform;
-          transform: translateZ(0);
-        }
-        
-        /* Optimize main content transition */
-        .main-content:not(.navigating) {
           transition: margin-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
         }
         
@@ -195,6 +178,40 @@ export default function Layout({ children }) {
             margin-left: 0 !important;
           }
         }
+        
+        /* Page transition animations */
+        .page-content {
+          position: relative;
+          animation-duration: 0.3s;
+          animation-fill-mode: both;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+          from { transform: translateY(20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        
+        @keyframes slideRight {
+          from { transform: translateX(-20px); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .transition-fade .page-content {
+          animation-name: fadeIn;
+        }
+        
+        .transition-slide-up .page-content {
+          animation-name: slideUp;
+        }
+        
+        .transition-slide-right .page-content {
+          animation-name: slideRight;
+        }
       `;
       
       document.head.appendChild(style);
@@ -214,28 +231,13 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (!isClient) return;
     
-    // Freeze layout selama navigasi untuk mencegah flicker
-    const freezeLayoutForNavigation = () => {
-      try {
-        // Tambahkan class navigating ke body untuk mempengaruhi seluruh halaman
-        document.body.classList.add('navigating');
-        
-        // Freeze sidebar
-        if (sidebarRef.current) {
-          const currentWidth = sidebarRef.current.offsetWidth;
-          sidebarRef.current.style.width = `${currentWidth}px`;
-        }
-        
-        // Freeze main content
-        if (mainRef.current) {
-          const currentMargin = window.getComputedStyle(mainRef.current).marginLeft;
-          mainRef.current.style.marginLeft = currentMargin;
-        }
-      } catch (err) {
-        console.log('Error freezing layout:', err);
-      }
+    // Pilih animasi transisi halaman secara acak
+    const getRandomTransition = () => {
+      const transitions = ['transition-fade', 'transition-slide-up', 'transition-slide-right'];
+      const randomIndex = Math.floor(Math.random() * transitions.length);
+      return transitions[randomIndex];
     };
-
+    
     const handleStart = (url) => {
       try {
         // Abaikan navigasi dalam halaman yang sama atau hanya perbedaan query params
@@ -243,8 +245,20 @@ export default function Layout({ children }) {
           return;
         }
         
+        // Pilih animasi transisi baru
+        setPageTransition('');
         setIsNavigating(true);
-        freezeLayoutForNavigation();
+        
+        // Pastikan sidebar tetap pada posisinya
+        if (sidebarRef.current) {
+          sidebarRef.current.style.transition = 'none';
+        }
+        
+        // Pastikan main content tetap pada posisinya
+        if (mainRef.current) {
+          mainRef.current.style.transition = 'none';
+          mainRef.current.style.marginLeft = `${sidebarWidth}px`;
+        }
       } catch (err) {
         console.log('Error handling navigation start:', err);
       }
@@ -257,24 +271,24 @@ export default function Layout({ children }) {
           return;
         }
         
-        // Delay untuk memastikan halaman sepenuhnya dirender
-        // sebelum mengembalikan animasi
+        // Terapkan animasi setelah navigasi selesai
         setTimeout(() => {
           try {
-            setIsNavigating(false);
-            document.body.classList.remove('navigating');
-            
+            // Reset sidebar dan main content styles
             if (sidebarRef.current) {
-              sidebarRef.current.style.width = '';
+              sidebarRef.current.style.transition = '';
             }
             
             if (mainRef.current) {
-              mainRef.current.style.marginLeft = '';
+              mainRef.current.style.transition = '';
             }
+            
+            setIsNavigating(false);
+            setPageTransition(getRandomTransition());
           } catch (err) {
-            console.log('Error resetting layout after navigation:', err);
+            console.log('Error resetting after navigation:', err);
           }
-        }, 400); // Lebih lama untuk memastikan stabilitas
+        }, 50);
         
         setIsMobileMenuOpen(false);
       } catch (err) {
@@ -284,7 +298,10 @@ export default function Layout({ children }) {
     
     const handleBeforeHistoryChange = () => {
       try {
-        freezeLayoutForNavigation();
+        // Pastikan sidebar tetap pada posisinya
+        if (sidebarRef.current) {
+          sidebarRef.current.style.transition = 'none';
+        }
       } catch (err) {
         console.log('Error handling history change:', err);
       }
@@ -317,12 +334,11 @@ export default function Layout({ children }) {
         router.events.off('routeChangeComplete', handleComplete);
         router.events.off('beforeHistoryChange', handleBeforeHistoryChange);
         document.removeEventListener('mousedown', handleOutsideClick);
-        document.body.classList.remove('navigating');
       } catch (err) {
         console.log('Error cleaning up event listeners:', err);
       }
     };
-  }, [router, isClient]);
+  }, [router, isClient, sidebarWidth]);
 
   const toggleDarkMode = () => {
     try {
@@ -401,10 +417,6 @@ export default function Layout({ children }) {
       console.log('Error toggling notifications:', err);
     }
   };
-  
-  // Class untuk sidebar dan main content
-  const sidebarClass = `sidebar ${isNavigating ? 'navigating' : ''}`;
-  const mainContentClass = `main-content ${isNavigating ? 'navigating' : ''} mobile-content`;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -430,7 +442,7 @@ export default function Layout({ children }) {
       {/* Desktop Sidebar Component */}
       {isClient && (
         <>
-          <div className={sidebarClass} ref={sidebarRef}>
+          <div className="sidebar" ref={sidebarRef}>
             <div className="sidebar-inner h-full">
               <Sidebar 
                 isCollapsed={isCollapsed}
@@ -453,9 +465,9 @@ export default function Layout({ children }) {
       )}
       
       {/* Main Content */}
-      <main ref={mainRef} className={mainContentClass}>
-        <div className="pt-20 lg:pt-8 px-4 sm:px-6 lg:px-8 py-6 lg:py-8">
-          <div className="max-w-7xl mx-auto">
+      <main ref={mainRef} className="main-content mobile-content">
+        <div className={`pt-20 lg:pt-8 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 ${pageTransition}`}>
+          <div className="page-content max-w-7xl mx-auto">
             {children}
           </div>
         </div>
