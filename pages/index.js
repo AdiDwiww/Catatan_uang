@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   ArrowTrendingUpIcon, 
   BanknotesIcon,
@@ -11,6 +11,8 @@ import {
   ChartBarIcon,
   ReceiptPercentIcon
 } from '@heroicons/react/24/outline';
+import { useSession, signIn } from 'next-auth/react';
+import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 import Card from '../components/Card';
 import KpiCard from '../components/KpiCard';
@@ -20,6 +22,14 @@ import { useDashboard } from '../lib/hooks';
 import { AdvancedLineChart, AdvancedPieChart } from '../components/AdvancedCharts';
 
 export default function Home() {
+  const router = useRouter();
+  const { data: session, status } = useSession({
+    required: true,
+    onUnauthenticated() {
+      router.push('/auth/signin');
+    },
+  });
+  
   // Gunakan SWR hook untuk data dashboard
   const { summary, transaksi, isLoading, isError, mutate } = useDashboard();
   
@@ -40,6 +50,11 @@ export default function Home() {
   
   // Filter data transaksi
   const handleFilter = (filters) => {
+    if (!transaksi || !Array.isArray(transaksi)) {
+      setFilteredData([]);
+      return;
+    }
+
     let filtered = [...transaksi];
 
     if (filters.startDate) {
@@ -55,7 +70,7 @@ export default function Home() {
       const search = filters.search.toLowerCase();
       filtered = filtered.filter(t => 
         t.produk.toLowerCase().includes(search) ||
-        t.customer.nama.toLowerCase().includes(search)
+        (t.customer && t.customer.nama && t.customer.nama.toLowerCase().includes(search))
       );
     }
 
@@ -70,11 +85,14 @@ export default function Home() {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   
   // Prepare tujuan list for filter
-  const tujuanList = transaksi ? [...new Set(transaksi.map(t => t.tujuan))].filter(Boolean) : [];
+  const tujuanList = transaksi && Array.isArray(transaksi) ? 
+    [...new Set(transaksi.map(t => t.tujuan))].filter(Boolean) : [];
   
   // Prepare chart data
   const prepareChartData = () => {
-    if (!transaksi || transaksi.length === 0) return { dailyData: [], methodData: [] };
+    if (!transaksi || !Array.isArray(transaksi) || transaksi.length === 0) {
+      return { dailyData: [], methodData: [] };
+    }
     
     // Group by date
     const dailyData = transaksi.reduce((acc, t) => {
@@ -106,11 +124,27 @@ export default function Home() {
   const { dailyData, methodData } = prepareChartData();
   
   // Effect to set filtered data when transaksi data changes
-  useState(() => {
-    if (transaksi) {
+  useEffect(() => {
+    if (transaksi && Array.isArray(transaksi)) {
       setFilteredData(transaksi);
+    } else {
+      setFilteredData([]);
     }
   }, [transaksi]);
+  
+  // Show loading state while checking authentication
+  if (status === 'loading') {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div>
+            <p className="mt-4 text-gray-700 dark:text-gray-300">Memuat...</p>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -119,6 +153,11 @@ export default function Home() {
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
             Dashboard
           </h1>
+          {session?.user && (
+            <div className="text-sm text-gray-600 dark:text-gray-400">
+              Selamat datang, {session.user.name || session.user.email}
+            </div>
+          )}
         </div>
         
         {isLoading ? (
@@ -169,7 +208,7 @@ export default function Home() {
               
               <KpiCard
                 title="Profitabilitas"
-                value={summary.profitabilityRate}
+                value={summary.profitabilityRate || 0}
                 formatter={formatPercentage}
                 icon={ReceiptPercentIcon}
                 iconColor="purple"
@@ -249,23 +288,25 @@ export default function Home() {
                             {new Date(t.tanggal).toLocaleDateString('id-ID')}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
-                            {t.customer.nama}
+                            {t.customer?.nama || 'N/A'}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                             {t.produk}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300 text-right">
                             {formatCurrency(t.hargaJual)}
                           </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
-                            {formatCurrency(t.hargaJual - t.hargaAsli)}
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
+                            <span className={`${t.hargaJual > t.hargaAsli ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {formatCurrency(t.hargaJual - t.hargaAsli)}
+                            </span>
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="5" className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
-                          Tidak ada transaksi yang sesuai dengan filter
+                        <td colSpan="5" className="px-4 py-5 text-center text-gray-500 dark:text-gray-400">
+                          Tidak ada data transaksi
                         </td>
                       </tr>
                     )}
@@ -275,11 +316,13 @@ export default function Home() {
               
               {/* Pagination */}
               {filteredData.length > 0 && (
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
-                />
+                <div className="mt-4 flex justify-end">
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    goToPage={setCurrentPage}
+                  />
+                </div>
               )}
             </Card>
           </>

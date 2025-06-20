@@ -38,9 +38,18 @@ next-env.d.ts
 /prisma/dev.db
 /prisma/dev.db-journal
 
+# IDE
+.vscode/
+.idea/
+
 # logs
 logs
 *.log
+
+# temp files
+.temp
+.tmp
+.cache
 
 # editor directories and files
 .idea

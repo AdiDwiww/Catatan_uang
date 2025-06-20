@@ -1,9 +1,22 @@
 import { getAllTransaksi } from '../../lib/db';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../../src/app/api/auth/[...nextauth]/route";
 
 export default async function handler(req, res) {
+  // Get user session
+  const session = await getServerSession(req, res, authOptions);
+  
+  // Require authentication
+  if (!session?.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  
+  const userId = session.user.id;
+  
   if (req.method === 'GET') {
     try {
-      const transaksi = await getAllTransaksi();
+      // Pass userId to filter transactions by user
+      const transaksi = await getAllTransaksi(userId);
       
       // Calculate base summary statistics
       const totalPenjualan = transaksi.reduce((sum, t) => sum + t.hargaJual, 0);

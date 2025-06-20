@@ -1,9 +1,21 @@
 import { getAllTransaksi, addTransaksi, updateTransaksi, deleteTransaksi } from '../../lib/db';
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "../../src/app/api/auth/[...nextauth]/route";
 
 export default async function handler(req, res) {
+  // Get user session
+  const session = await getServerSession(req, res, authOptions);
+  
+  // Require authentication
+  if (!session?.user) {
+    return res.status(401).json({ message: 'Unauthorized' });
+  }
+  
+  const userId = session.user.id;
   const { id } = req.query;
+  
   if (req.method === 'GET') {
-    const data = await getAllTransaksi();
+    const data = await getAllTransaksi(userId);
     res.status(200).json(data);
   } else if (req.method === 'POST') {
     // Check if this is a bulk import request
@@ -34,7 +46,7 @@ export default async function handler(req, res) {
               continue;
             }
             
-            let transaksi = { ...item };
+            let transaksi = { ...item, userId: parseInt(userId) };
             
             // Convert customerId to integer
             if (typeof transaksi.customerId === 'string') {
@@ -104,7 +116,7 @@ export default async function handler(req, res) {
     } else {
       // Handle single transaction add
       try {
-        let transaksi = req.body;
+        let transaksi = { ...req.body, userId: parseInt(userId) };
         console.log('Received transaksi data:', transaksi); // log request body
         // Convert customerId to integer
         if (typeof transaksi.customerId === 'string') {
@@ -158,7 +170,7 @@ export default async function handler(req, res) {
       if ('profit' in transaksi) {
         delete transaksi.profit;
       }
-      const updated = await updateTransaksi(parseInt(id), transaksi);
+      const updated = await updateTransaksi(parseInt(id), transaksi, userId);
       res.status(200).json(updated);
     } catch (error) {
       console.error('Error updating transaksi:', error);
@@ -166,7 +178,7 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'DELETE' && id) {
     try {
-      await deleteTransaksi(parseInt(id));
+      await deleteTransaksi(parseInt(id), userId);
       res.status(200).json({ message: 'Transaksi deleted successfully' });
     } catch (error) {
       console.error('Error deleting transaksi:', error);
