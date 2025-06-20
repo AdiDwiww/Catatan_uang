@@ -7,6 +7,8 @@ import NotificationsDropdown from './NotificationsDropdown';
 
 // Simpan state sidebar di level global agar tetap bertahan saat navigasi
 let globalSidebarState = null;
+// Simpan rute sebelumnya untuk efek transisi
+let prevPathname = '';
 
 export default function Layout({ children }) {
   const router = useRouter();
@@ -14,6 +16,7 @@ export default function Layout({ children }) {
   const mainRef = useRef(null);
   const styleTagRef = useRef(null);
   const noAnimationStyleRef = useRef(null);
+  const contentRef = useRef(null);
   const [isDark, setIsDark] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -21,6 +24,7 @@ export default function Layout({ children }) {
   const notificationsRef = useRef(null);
   const [isNavigating, setIsNavigating] = useState(false);
   const [pageTransition, setPageTransition] = useState('');
+  const [transitionDirection, setTransitionDirection] = useState('next'); // 'next' atau 'prev'
   const [notifications] = useState([
     { id: 1, text: 'Transaksi baru telah ditambahkan', time: '5 menit yang lalu', isNew: true },
     { id: 2, text: 'Laporan bulanan tersedia', time: '1 jam yang lalu', isNew: false },
@@ -88,6 +92,9 @@ export default function Layout({ children }) {
       } catch (err) {
         console.log('LocalStorage not available');
       }
+      
+      // Inisialisasi rute sebelumnya
+      prevPathname = router.pathname;
       
       // Hapus style noAnimation setelah load awal selesai
       setTimeout(() => {
@@ -179,11 +186,21 @@ export default function Layout({ children }) {
           }
         }
         
+        /* Anti-blink wrapper */
+        .content-wrapper {
+          position: relative;
+          overflow: hidden;
+          min-height: 100vh;
+          background-color: inherit;
+        }
+        
         /* Page transition animations */
         .page-content {
           position: relative;
-          animation-duration: 0.3s;
+          animation-duration: 0.35s;
           animation-fill-mode: both;
+          animation-timing-function: cubic-bezier(0.35, 0, 0.25, 1);
+          will-change: transform, opacity;
         }
         
         @keyframes fadeIn {
@@ -192,13 +209,23 @@ export default function Layout({ children }) {
         }
         
         @keyframes slideUp {
-          from { transform: translateY(20px); opacity: 0; }
+          from { transform: translateY(30px); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
         }
         
         @keyframes slideRight {
-          from { transform: translateX(-20px); opacity: 0; }
+          from { transform: translateX(-30px); opacity: 0; }
           to { transform: translateX(0); opacity: 1; }
+        }
+
+        @keyframes slideLeft {
+          from { transform: translateX(30px); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        
+        @keyframes zoomIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
         }
         
         .transition-fade .page-content {
@@ -212,6 +239,33 @@ export default function Layout({ children }) {
         .transition-slide-right .page-content {
           animation-name: slideRight;
         }
+        
+        .transition-slide-left .page-content {
+          animation-name: slideLeft;
+        }
+        
+        .transition-zoom .page-content {
+          animation-name: zoomIn;
+        }
+        
+        /* Cards animation effect */
+        .page-content .animate-card {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        
+        .page-content.animated .animate-card {
+          opacity: 1;
+          transform: translateY(0);
+          transition: all 0.5s cubic-bezier(0.35, 0, 0.25, 1);
+        }
+        
+        .page-content.animated .animate-card:nth-child(1) { transition-delay: 0.1s; }
+        .page-content.animated .animate-card:nth-child(2) { transition-delay: 0.2s; }
+        .page-content.animated .animate-card:nth-child(3) { transition-delay: 0.3s; }
+        .page-content.animated .animate-card:nth-child(4) { transition-delay: 0.4s; }
+        .page-content.animated .animate-card:nth-child(5) { transition-delay: 0.5s; }
+        .page-content.animated .animate-card:nth-child(6) { transition-delay: 0.6s; }
       `;
       
       document.head.appendChild(style);
@@ -231,23 +285,102 @@ export default function Layout({ children }) {
   useEffect(() => {
     if (!isClient) return;
     
-    // Pilih animasi transisi halaman secara acak
-    const getRandomTransition = () => {
-      const transitions = ['transition-fade', 'transition-slide-up', 'transition-slide-right'];
+    // Pilih animasi transisi halaman berdasarkan navigasi
+    const getTransition = (nextPath) => {
+      // Tentukan arah navigasi berdasarkan path hierarchy
+      const navPoints = {
+        '/': 0,
+        '/customer': 1, 
+        '/transaksi': 2,
+        '/laporan': 3,
+      };
+      
+      // Tetapkan default transitions
+      const transitions = ['transition-fade', 'transition-slide-up', 'transition-slide-right', 'transition-slide-left', 'transition-zoom'];
+      
+      // Coba tentukan arah berdasarkan hierarchy
+      const currentPoint = navPoints[prevPathname] ?? -1;
+      const nextPoint = navPoints[nextPath] ?? -1;
+      
+      let direction = 'none';
+      if (currentPoint >= 0 && nextPoint >= 0) {
+        direction = currentPoint < nextPoint ? 'next' : 'prev';
+        setTransitionDirection(direction);
+        
+        // Gunakan animasi berbeda berdasarkan arah
+        if (direction === 'next') {
+          return 'transition-slide-left';
+        } else {
+          return 'transition-slide-right';
+        }
+      }
+      
+      // Gunakan random jika tidak dapat menentukan hierarchy
       const randomIndex = Math.floor(Math.random() * transitions.length);
       return transitions[randomIndex];
     };
     
+    // Pre-cache halaman berikutnya untuk mengurangi blink
+    const preCacheNextPage = (path) => {
+      try {
+        // Lakukan pre-fetching untuk halaman
+        router.prefetch(path);
+      } catch (err) {
+        console.log('Error pre-caching:', err);
+      }
+    };
+    
+    // Pre-cache semua halaman yang mungkin dikunjungi
+    const preCacheCommonPages = () => {
+      const pages = ['/', '/customer', '/transaksi', '/laporan'];
+      pages.forEach(page => {
+        if (page !== router.pathname) {
+          preCacheNextPage(page);
+        }
+      });
+    };
+    
+    // Pre-cache halaman saat komponen mount
+    preCacheCommonPages();
+    
     const handleStart = (url) => {
       try {
+        const nextPath = url.split('?')[0];
+        const currentPath = router.asPath.split('?')[0];
+        
         // Abaikan navigasi dalam halaman yang sama atau hanya perbedaan query params
-        if (url.split('?')[0] === router.asPath.split('?')[0]) {
+        if (nextPath === currentPath) {
           return;
         }
         
-        // Pilih animasi transisi baru
+        // Matikan animasi transisi konten
+        if (contentRef.current) {
+          contentRef.current.classList.remove('animated');
+        }
+        
+        // Pilih animasi transisi baru berdasarkan arah navigasi
         setPageTransition('');
         setIsNavigating(true);
+        
+        // Prevent layout shifts
+        const bodyBg = window.getComputedStyle(document.body).backgroundColor;
+        document.documentElement.style.setProperty('--body-bg-color', bodyBg);
+        
+        // Tambahkan overlay anti-flicker
+        const overlay = document.createElement('div');
+        overlay.id = 'page-transition-overlay';
+        overlay.style.cssText = `
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background-color: var(--body-bg-color);
+          z-index: -1;
+          opacity: 0;
+          pointer-events: none;
+        `;
+        document.body.appendChild(overlay);
         
         // Pastikan sidebar tetap pada posisinya
         if (sidebarRef.current) {
@@ -266,9 +399,21 @@ export default function Layout({ children }) {
     
     const handleComplete = (url) => {
       try {
+        const nextPath = url.split('?')[0];
+        const currentPath = router.asPath.split('?')[0];
+        
         // Abaikan navigasi dalam halaman yang sama atau hanya perbedaan query params
-        if (url.split('?')[0] === router.asPath.split('?')[0]) {
+        if (nextPath === currentPath) {
           return;
+        }
+        
+        // Update prevPathname untuk navigasi berikutnya
+        prevPathname = router.pathname;
+        
+        // Hapus overlay
+        const overlay = document.getElementById('page-transition-overlay');
+        if (overlay) {
+          safeRemoveElement(overlay);
         }
         
         // Terapkan animasi setelah navigasi selesai
@@ -284,7 +429,14 @@ export default function Layout({ children }) {
             }
             
             setIsNavigating(false);
-            setPageTransition(getRandomTransition());
+            setPageTransition(getTransition(router.pathname));
+            
+            // Aktifkan animasi card dengan delay
+            setTimeout(() => {
+              if (contentRef.current) {
+                contentRef.current.classList.add('animated');
+              }
+            }, 50);
           } catch (err) {
             console.log('Error resetting after navigation:', err);
           }
@@ -318,6 +470,13 @@ export default function Layout({ children }) {
       }
     };
     
+    // Aktifkan animasi card pada load awal
+    setTimeout(() => {
+      if (contentRef.current && !isNavigating) {
+        contentRef.current.classList.add('animated');
+      }
+    }, 100);
+    
     try {
       // Register event listeners
       router.events.on('routeChangeStart', handleStart);
@@ -338,7 +497,7 @@ export default function Layout({ children }) {
         console.log('Error cleaning up event listeners:', err);
       }
     };
-  }, [router, isClient, sidebarWidth]);
+  }, [router, isClient, sidebarWidth, isNavigating]);
 
   const toggleDarkMode = () => {
     try {
@@ -419,7 +578,7 @@ export default function Layout({ children }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 overflow-hidden">
       {/* Mobile Header Component */}
       <MobileHeader
         isDark={isDark}
@@ -465,10 +624,12 @@ export default function Layout({ children }) {
       )}
       
       {/* Main Content */}
-      <main ref={mainRef} className="main-content mobile-content">
-        <div className={`pt-20 lg:pt-8 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 ${pageTransition}`}>
-          <div className="page-content max-w-7xl mx-auto">
-            {children}
+      <main ref={mainRef} className="main-content mobile-content overflow-y-auto">
+        <div className="content-wrapper">
+          <div className={`pt-20 lg:pt-8 px-4 sm:px-6 lg:px-8 py-6 lg:py-8 ${pageTransition}`}>
+            <div ref={contentRef} className="page-content max-w-7xl mx-auto">
+              {children}
+            </div>
           </div>
         </div>
       </main>

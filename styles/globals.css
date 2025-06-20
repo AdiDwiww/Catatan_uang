@@ -6,7 +6,7 @@
   --foreground-rgb: 0, 0, 0;
   --background-start-rgb: 255, 255, 255;
   --background-end-rgb: 245, 245, 245;
-  --prev-bg-color: #ffffff;
+  --body-bg-color: #ffffff;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -14,13 +14,27 @@
     --foreground-rgb: 255, 255, 255;
     --background-start-rgb: 0, 0, 0;
     --background-end-rgb: 15, 15, 15;
-    --prev-bg-color: #111827;
+    --body-bg-color: #111827;
   }
 }
 
 /* Optimasi dasar untuk rendering yang lebih lancar */
 html {
   scroll-behavior: smooth;
+}
+
+html, 
+body, 
+#__next {
+  min-height: 100%;
+  will-change: auto;
+  overflow-y: visible !important;
+}
+
+/* Mencegah flash hitam saat navigasi */
+#__next {
+  isolation: isolate;
+  background-color: var(--body-bg-color);
 }
 
 body {
@@ -31,12 +45,38 @@ body {
       rgb(var(--background-end-rgb))
     )
     rgb(var(--background-start-rgb));
+  overflow-y: auto !important;
+  overflow-x: hidden;
+}
+
+/* Efek transisi smooth untuk semua elemen interaktif */
+a, button, input, 
+.transition-element {
+  transition-property: color, background-color, border-color, transform, opacity;
+  transition-duration: 0.2s;
+  transition-timing-function: cubic-bezier(0.35, 0, 0.25, 1);
+}
+
+/* Optimasi untuk page transition */
+.content-wrapper {
+  position: relative;
+  isolation: isolate;
+  height: auto;
+  min-height: auto;
+  overflow: visible;
 }
 
 /* Animasi transisi halaman */
 .page-content {
   will-change: opacity, transform;
   transition-property: opacity, transform;
+  transform-origin: center center;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  transform-style: preserve-3d;
+  contain: style;
+  height: auto;
+  min-height: auto;
 }
 
 /* Fix untuk sidebar dan content */
@@ -44,7 +84,7 @@ body {
   transform: translate3d(0,0,0);
   backface-visibility: hidden;
   perspective: 1000px;
-  contain: size layout style;
+  contain: style;
   z-index: 30;
 }
 
@@ -52,7 +92,32 @@ body {
   transform: translate3d(0,0,0);
   backface-visibility: hidden;
   transition-property: margin-left;
-  contain: layout style;
+  overflow-y: auto;
+  height: auto;
+  contain: style;
+}
+
+/* Card Animation */
+.animate-card {
+  will-change: opacity, transform;
+  transform: translateZ(0);
+}
+
+/* Fix untuk flicker di webkit browsers */
+.no-flicker {
+  -webkit-transform: translate3d(0,0,0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Page Transition Overlay */
+#page-transition-overlay {
+  backface-visibility: hidden;
+  transform: translateZ(0);
+  will-change: opacity;
+  transition: opacity 300ms ease;
 }
 
 @layer base {
@@ -125,6 +190,12 @@ body {
     transition-property: width;
     transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     transition-duration: 300ms;
+  }
+
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
   }
 }
 
@@ -228,6 +299,7 @@ textarea:focus {
 /* Dark mode improvements */
 .dark {
   color-scheme: dark;
+  --body-bg-color: #111827;
 }
 
 .dark input[type="text"],
@@ -266,7 +338,7 @@ body.navigating::before {
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background-color: var(--prev-bg-color);
+  background-color: var(--body-bg-color);
   opacity: 1;
   transition: opacity 0ms;
   pointer-events: none;
