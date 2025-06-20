@@ -221,30 +221,6 @@ export default function Home() {
               tujuanList={tujuanList} 
             />
             
-            {/* Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {dailyData.length > 0 && (
-                <AdvancedLineChart
-                  title="Tren Penjualan"
-                  data={dailyData}
-                  xAxisKey="date"
-                  yAxisKeys={['total', 'profit']}
-                  yAxisLabels={['Penjualan', 'Profit']}
-                  formatYAxis={formatCurrency}
-                />
-              )}
-              
-              {methodData.length > 0 && (
-                <AdvancedPieChart
-                  title="Penjualan per Metode Pembayaran"
-                  data={methodData}
-                  labelKey="method"
-                  valueKey="value"
-                  formatValue={formatCurrency}
-                />
-              )}
-            </div>
-            
             {/* Recent Transactions */}
             <Card className="mb-8">
               <div className="flex justify-between items-center mb-4">
@@ -325,6 +301,30 @@ export default function Home() {
                 </div>
               )}
             </Card>
+            
+            {/* Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+              {dailyData.length > 0 && (
+                <AdvancedLineChart
+                  title="Tren Penjualan"
+                  data={dailyData}
+                  xAxisKey="date"
+                  yAxisKeys={['total', 'profit']}
+                  yAxisLabels={['Penjualan', 'Profit']}
+                  formatYAxis={formatCurrency}
+                />
+              )}
+              
+              {methodData.length > 0 && (
+                <AdvancedPieChart
+                  title="Penjualan per Metode Pembayaran"
+                  data={methodData}
+                  labelKey="method"
+                  valueKey="value"
+                  formatValue={formatCurrency}
+                />
+              )}
+            </div>
           </>
         )}
       </div>
