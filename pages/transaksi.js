@@ -3,6 +3,9 @@ import Layout from '../components/Layout';
 import Card from '../components/Card';
 import TransaksiForm from '../components/TransaksiForm';
 import Modal from '../components/Modal';
+import AdvancedSearch from '../components/AdvancedSearch';
+import InvoiceModal from '../components/InvoiceModal';
+import InvoiceModalNew from '../components/InvoiceModalNew';
 import Papa from 'papaparse';
 import { 
   PlusIcon, 
@@ -12,23 +15,29 @@ import {
   ArrowUpTrayIcon,
   ArrowDownTrayIcon,
   DocumentTextIcon,
-  FolderIcon
+  FolderIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline';
+import { formatCurrency } from '../lib/currency';
 
 export default function Transaksi() {
   const [transaksi, setTransaksi] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [showForm, setShowForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
   const [selectedTransaksi, setSelectedTransaksi] = useState(null);
   const [showImportModal, setShowImportModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceTransaction, setInvoiceTransaction] = useState(null);
   const [importStatus, setImportStatus] = useState(null);
   const [importFile, setImportFile] = useState(null);
   const [importFileName, setImportFileName] = useState('');
+  const [filters, setFilters] = useState({});
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     fetchTransaksi();
+    fetchCustomers();
   }, []);
 
   const fetchTransaksi = async () => {
@@ -42,6 +51,106 @@ export default function Transaksi() {
       console.error('Error fetching transaksi:', error);
     }
   };
+
+  const fetchCustomers = async () => {
+    try {
+      const response = await fetch('/api/customer');
+      console.log('Customer API response status:', response.status);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCustomers(data);
+      } else {
+        const errorData = await response.json();
+        console.error('Error fetching customers:', response.status, response.statusText, errorData);
+        // Show user-friendly error message
+        alert(`Error loading customers: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error fetching customers:', error);
+      alert('Error loading customers. Please check your connection and try again.');
+    }
+  };
+
+  // Advanced search handler
+  const handleAdvancedSearch = (searchFilters) => {
+    setFilters(searchFilters);
+  };
+
+  const handleClearSearch = () => {
+    setFilters({});
+  };
+
+  // Handle generate invoice
+  const handleGenerateInvoice = (transaction) => {
+    setInvoiceTransaction(transaction);
+    setShowInvoiceModal(true);
+  };
+
+  // Filter transaksi berdasarkan advanced search
+  const filteredTransaksi = transaksi.filter((t) => {
+    // Basic search filter
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      const matchesSearch = 
+        t.produk.toLowerCase().includes(search) ||
+        t.customer.nama.toLowerCase().includes(search) ||
+        t.metode.toLowerCase().includes(search) ||
+        t.tujuan?.toLowerCase().includes(search) ||
+        t.tag?.toLowerCase().includes(search);
+      
+      if (!matchesSearch) return false;
+    }
+
+    // Customer filter
+    if (filters.customerId && t.customerId !== parseInt(filters.customerId)) {
+      return false;
+    }
+
+    // Date range filter
+    if (filters.startDate) {
+      const startDate = new Date(filters.startDate);
+      const transaksiDate = new Date(t.tanggal);
+      if (transaksiDate < startDate) return false;
+    }
+
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      const transaksiDate = new Date(t.tanggal);
+      if (transaksiDate > endDate) return false;
+    }
+
+    // Amount range filter
+    if (filters.minAmount && t.hargaJual < parseFloat(filters.minAmount)) {
+      return false;
+    }
+
+    if (filters.maxAmount && t.hargaJual > parseFloat(filters.maxAmount)) {
+      return false;
+    }
+
+    // Currency filter
+    if (filters.mataUang && t.mataUang !== filters.mataUang) {
+      return false;
+    }
+
+    // Payment method filter
+    if (filters.metode && t.metode !== filters.metode) {
+      return false;
+    }
+
+    // Destination filter
+    if (filters.tujuan && t.tujuan !== filters.tujuan) {
+      return false;
+    }
+
+    // Tag filter
+    if (filters.tag && (!t.tag || !t.tag.toLowerCase().includes(filters.tag.toLowerCase()))) {
+      return false;
+    }
+
+    return true;
+  });
 
   // Custom file selection function to avoid Chrome extension issues
   const selectImportFile = () => {
@@ -158,11 +267,13 @@ export default function Transaksi() {
 
   const handleSubmit = async (formTransaksi) => {
     try {
+      console.log('handleSubmit called with:', formTransaksi);
       let dataToSend = { ...formTransaksi };
       // Hapus field customer jika ada
       if ('customer' in dataToSend) {
         delete dataToSend.customer;
       }
+      console.log('Data to send:', dataToSend);
       let response;
       if (selectedTransaksi) {
         // Edit transaksi
@@ -177,6 +288,7 @@ export default function Transaksi() {
         });
       } else {
         // Tambah transaksi
+        console.log('Sending POST request to /api/transaksi');
         response = await fetch('/api/transaksi', {
           method: 'POST',
           headers: {
@@ -196,12 +308,16 @@ export default function Transaksi() {
         }
         setShowForm(false);
         setSelectedTransaksi(null);
+        // Refresh data setelah berhasil
+        fetchTransaksi();
       } else {
         const errorText = await response.text();
         console.error('Error response:', errorText);
+        alert('Gagal menyimpan transaksi: ' + errorText);
       }
     } catch (error) {
       console.error('Error saving transaksi:', error);
+      alert('Terjadi kesalahan: ' + error.message);
     }
   };
 
@@ -315,13 +431,13 @@ export default function Transaksi() {
   const handleExportData = () => {
     try {
       // Ensure transaksi data exists
-      if (!transaksi || !Array.isArray(transaksi) || transaksi.length === 0) {
+      if (!filteredTransaksi || !Array.isArray(filteredTransaksi) || filteredTransaksi.length === 0) {
         alert('Tidak ada data transaksi untuk diexport');
         return;
       }
       
       // Prepare data for export with null checks
-      const dataToExport = transaksi.map(t => {
+      const dataToExport = filteredTransaksi.map(t => {
         if (!t) return null;
         
         return {
@@ -363,13 +479,6 @@ export default function Transaksi() {
     }
   };
 
-  const filteredTransaksi = transaksi.filter((t) =>
-    t.produk.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.customer.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.metode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    t.tujuan?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   return (
     <Layout>
       <div className="space-y-6">
@@ -407,16 +516,21 @@ export default function Transaksi() {
 
         <Card>
           <div className="mb-4 px-2 sm:px-0">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Cari transaksi..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white shadow-sm"
-              />
-              <MagnifyingGlassIcon className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
-            </div>
+            <AdvancedSearch 
+              onSearch={handleAdvancedSearch}
+              onClear={handleClearSearch}
+              customers={customers}
+            />
+          </div>
+
+          {/* Search Results Info */}
+          <div className="mb-4 px-2 sm:px-0 text-sm text-gray-600 dark:text-gray-400">
+            Menampilkan {filteredTransaksi.length} transaksi
+            {Object.keys(filters).length > 0 && (
+              <span className="ml-2 text-indigo-600 dark:text-indigo-400">
+                (dengan filter aktif)
+              </span>
+            )}
           </div>
 
           <div className="responsive-table">
@@ -459,10 +573,12 @@ export default function Transaksi() {
                       {t.produk}
                     </td>
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 dark:text-gray-300">
-                      Rp {t.hargaJual.toLocaleString()}
+                      {formatCurrency(t.hargaJual, t.mataUang)}
+                      <span className="ml-1 text-xs text-gray-500">{t.mataUang}</span>
                     </td>
                     <td className="hidden sm:table-cell px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-green-600 dark:text-green-400">
-                      Rp {(t.hargaJual - t.hargaAsli).toLocaleString()}
+                      {formatCurrency(t.hargaJual - t.hargaAsli, t.mataUang)}
+                      <span className="ml-1 text-xs text-gray-500">{t.mataUang}</span>
                     </td>
                     <td className="hidden md:table-cell px-3 sm:px-6 py-3 sm:py-4 text-xs sm:text-sm text-gray-900 dark:text-gray-300">
                       {t.metode}
@@ -470,17 +586,26 @@ export default function Transaksi() {
                     <td className="px-3 sm:px-6 py-3 sm:py-4 text-right text-xs sm:text-sm font-medium">
                       <div className="flex justify-end space-x-2">
                         <button
+                          onClick={() => handleGenerateInvoice(t)}
+                          className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                          title="Generate Invoice"
+                        >
+                          <DocumentArrowDownIcon className="w-5 h-5" />
+                        </button>
+                        <button
                           onClick={() => {
                             setSelectedTransaksi(t);
                             setShowForm(true);
                           }}
                           className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300"
+                          title="Edit"
                         >
                           <PencilIcon className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleDelete(t.id)}
                           className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                          title="Delete"
                         >
                           <TrashIcon className="w-5 h-5" />
                         </button>
@@ -496,13 +621,13 @@ export default function Transaksi() {
 
       {showForm && (
         <TransaksiForm
-          isOpen={showForm}
-          onClose={() => {
+          onSubmit={handleSubmit}
+          onCancel={() => {
             setShowForm(false);
             setSelectedTransaksi(null);
           }}
-          onSubmit={handleSubmit}
           initialData={selectedTransaksi}
+          customers={customers}
         />
       )}
 
@@ -602,6 +727,16 @@ export default function Transaksi() {
           </div>
         </div>
       </Modal>
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && invoiceTransaction && (
+        <InvoiceModalNew
+          isOpen={showInvoiceModal}
+          onClose={() => setShowInvoiceModal(false)}
+          transaction={invoiceTransaction}
+          customer={invoiceTransaction.customer}
+        />
+      )}
     </Layout>
   );
 } 

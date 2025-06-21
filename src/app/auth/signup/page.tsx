@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { EyeIcon, EyeSlashIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 export default function SignUp() {
   const router = useRouter();
@@ -13,50 +14,10 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [nameFocused, setNameFocused] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);
-  const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [step, setStep] = useState(1);
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { 
-        when: "beforeChildren",
-        staggerChildren: 0.1,
-        duration: 0.3
-      } 
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { type: "spring", stiffness: 300, damping: 24 }
-    }
-  };
-
-  const slideVariants = {
-    hidden: { x: 30, opacity: 0 },
-    visible: { 
-      x: 0, 
-      opacity: 1,
-      transition: { type: "spring", stiffness: 300, damping: 24 }
-    },
-    exit: { 
-      x: -30, 
-      opacity: 0,
-      transition: { ease: "easeInOut", duration: 0.2 }
-    }
-  };
 
   // Password strength calculation
   const calculatePasswordStrength = (password: string) => {
@@ -178,11 +139,17 @@ export default function SignUp() {
       <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 lg:px-16 xl:px-24">
         <motion.div 
           className="w-full max-w-md"
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <motion.div variants={itemVariants} className="text-center mb-8">
+          {/* Logo and Header */}
+          <motion.div 
+            className="text-center mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
             <div className="flex justify-center mb-6">
               <div className="h-14 w-14 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -203,10 +170,10 @@ export default function SignUp() {
               <motion.form 
                 className="space-y-6"
                 onSubmit={handleNextStep}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                variants={slideVariants}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ type: "spring", stiffness: 300, damping: 24 }}
               >
                 {/* Step indicator */}
                 <div className="flex justify-between items-center mb-6">
@@ -221,13 +188,8 @@ export default function SignUp() {
                 </div>
                 
                 {/* Name Input */}
-                <div className="relative">
-                  <label 
-                    htmlFor="name" 
-                    className={`absolute left-3 pointer-events-none transition-all duration-300 ${
-                      nameFocused || name ? 'text-xs -translate-y-6 text-indigo-600 dark:text-indigo-400' : 'text-sm translate-y-2 text-gray-500'
-                    }`}
-                  >
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Nama Lengkap
                   </label>
                   <input
@@ -236,22 +198,16 @@ export default function SignUp() {
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    onFocus={() => setNameFocused(true)}
-                    onBlur={() => setNameFocused(false)}
                     required
-                    className="block w-full px-3 pt-4 pb-2 border-0 border-b-2 border-gray-300 bg-transparent focus:ring-0 focus:border-indigo-600 dark:border-gray-700 dark:text-white dark:focus:border-indigo-500 text-gray-900 transition-all duration-300"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    placeholder="Masukkan nama lengkap"
                   />
                 </div>
 
                 {/* Email Input */}
-                <div className="relative">
-                  <label 
-                    htmlFor="email" 
-                    className={`absolute left-3 pointer-events-none transition-all duration-300 ${
-                      emailFocused || email ? 'text-xs -translate-y-6 text-indigo-600 dark:text-indigo-400' : 'text-sm translate-y-2 text-gray-500'
-                    }`}
-                  >
-                    Email
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Email Address
                   </label>
                   <input
                     id="email"
@@ -259,10 +215,9 @@ export default function SignUp() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    onFocus={() => setEmailFocused(true)}
-                    onBlur={() => setEmailFocused(false)}
                     required
-                    className="block w-full px-3 pt-4 pb-2 border-0 border-b-2 border-gray-300 bg-transparent focus:ring-0 focus:border-indigo-600 dark:border-gray-700 dark:text-white dark:focus:border-indigo-500 text-gray-900 transition-all duration-300"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                    placeholder="Masukkan email address"
                   />
                 </div>
 
@@ -291,11 +246,9 @@ export default function SignUp() {
                 <motion.button
                   type="submit"
                   className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg
-                          text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 
-                          hover:from-indigo-700 hover:to-purple-700
+                          text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700
                           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-                          shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
-                          transition-all duration-200"
+                          shadow-md hover:shadow-lg transition-all duration-200"
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -308,15 +261,17 @@ export default function SignUp() {
               <motion.form 
                 className="space-y-6"
                 onSubmit={handleSubmit}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                variants={slideVariants}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                transition={{ type: "spring", stiffness: 300, damping: 24 }}
               >
                 {/* Step indicator */}
                 <div className="flex justify-between items-center mb-6">
                   <div className="flex items-center">
-                    <div className="h-7 w-7 rounded-full bg-indigo-600/40 flex items-center justify-center text-white font-medium text-sm">✓</div>
+                    <div className="h-7 w-7 rounded-full bg-indigo-600/40 flex items-center justify-center text-white font-medium text-sm">
+                      <CheckIcon className="w-4 h-4" />
+                    </div>
                     <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Informasi Dasar</span>
                   </div>
                   <div className="flex items-center">
@@ -326,41 +281,30 @@ export default function SignUp() {
                 </div>
 
                 {/* Password Input */}
-                <div className="relative">
-                  <label 
-                    htmlFor="password" 
-                    className={`absolute left-3 pointer-events-none transition-all duration-300 ${
-                      passwordFocused || password ? 'text-xs -translate-y-6 text-indigo-600 dark:text-indigo-400' : 'text-sm translate-y-2 text-gray-500'
-                    }`}
-                  >
+                <div>
+                  <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Password
                   </label>
-                  <div className="flex items-center">
+                  <div className="relative">
                     <input
                       id="password"
                       name="password"
-                      type={passwordVisible ? "text" : "password"}
+                      type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      onFocus={() => setPasswordFocused(true)}
-                      onBlur={() => setPasswordFocused(false)}
                       required
-                      className="block w-full px-3 pt-4 pb-2 border-0 border-b-2 border-gray-300 bg-transparent focus:ring-0 focus:border-indigo-600 dark:border-gray-700 dark:text-white dark:focus:border-indigo-500 text-gray-900 transition-all duration-300"
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                      placeholder="Masukkan password"
                     />
-                    <button 
+                    <button
                       type="button"
-                      onClick={() => setPasswordVisible(!passwordVisible)}
-                      className="absolute right-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
-                      {passwordVisible ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
+                      {showPassword ? (
+                        <EyeSlashIcon className="h-5 w-5" />
                       ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                        <EyeIcon className="h-5 w-5" />
                       )}
                     </button>
                   </div>
@@ -387,41 +331,30 @@ export default function SignUp() {
                 </div>
 
                 {/* Confirm Password Input */}
-                <div className="relative">
-                  <label 
-                    htmlFor="confirm-password" 
-                    className={`absolute left-3 pointer-events-none transition-all duration-300 ${
-                      confirmPasswordFocused || confirmPassword ? 'text-xs -translate-y-6 text-indigo-600 dark:text-indigo-400' : 'text-sm translate-y-2 text-gray-500'
-                    }`}
-                  >
+                <div>
+                  <label htmlFor="confirm-password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     Konfirmasi Password
                   </label>
-                  <div className="flex items-center">
+                  <div className="relative">
                     <input
                       id="confirm-password"
                       name="confirm-password"
-                      type={confirmPasswordVisible ? "text" : "password"}
+                      type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      onFocus={() => setConfirmPasswordFocused(true)}
-                      onBlur={() => setConfirmPasswordFocused(false)}
                       required
-                      className="block w-full px-3 pt-4 pb-2 border-0 border-b-2 border-gray-300 bg-transparent focus:ring-0 focus:border-indigo-600 dark:border-gray-700 dark:text-white dark:focus:border-indigo-500 text-gray-900 transition-all duration-300"
+                      className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                      placeholder="Konfirmasi password"
                     />
-                    <button 
+                    <button
                       type="button"
-                      onClick={() => setConfirmPasswordVisible(!confirmPasswordVisible)}
-                      className="absolute right-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                     >
-                      {confirmPasswordVisible ? (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                        </svg>
+                      {showConfirmPassword ? (
+                        <EyeSlashIcon className="h-5 w-5" />
                       ) : (
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
+                        <EyeIcon className="h-5 w-5" />
                       )}
                     </button>
                   </div>
@@ -491,12 +424,10 @@ export default function SignUp() {
                   <motion.button
                     type="submit"
                     disabled={isLoading}
-                    className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg
-                            text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 
-                            hover:from-indigo-700 hover:to-purple-700
+                    className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg
+                            text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700
                             focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-                            shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
-                            transition-all duration-200 ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+                            shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -526,8 +457,10 @@ export default function SignUp() {
             
             {/* Footer */}
             <motion.p 
-              variants={itemVariants} 
               className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
             >
               &copy; {new Date().getFullYear()} Catatan Uang. Semua hak dilindungi.
             </motion.p>

@@ -4,6 +4,8 @@ import Card from '../components/Card';
 import KpiCard from '../components/KpiCard';
 import Breadcrumbs from '../components/Breadcrumbs';
 import Pagination from '../components/Pagination';
+import AdvancedSearch from '../components/AdvancedSearch';
+import InvoiceModalNew from '../components/InvoiceModalNew';
 import { useLaporan } from '../lib/hooks';
 import { 
   CurrencyDollarIcon, 
@@ -23,6 +25,7 @@ import {
   AdvancedPieChart 
 } from '../components/AdvancedCharts';
 import Papa from 'papaparse';
+import { formatCurrency } from '../lib/currency';
 
 export default function Laporan() {
   // Gunakan SWR hook untuk data laporan
@@ -36,6 +39,14 @@ export default function Laporan() {
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportFormat, setExportFormat] = useState('csv');
   
+  // State untuk advanced search
+  const [customers, setCustomers] = useState([]);
+  const [filters, setFilters] = useState({});
+  
+  // State untuk invoice modal
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoiceTransaction, setInvoiceTransaction] = useState(null);
+  
   // Formatter untuk nilai uang
   const formatCurrency = (value) => {
     return `Rp ${value.toLocaleString('id-ID')}`;
@@ -45,16 +56,114 @@ export default function Laporan() {
   const formatPercentage = (value) => {
     return `${value.toFixed(2)}%`;
   };
+
+  // Fetch customers for filter
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/customer');
+        if (response.ok) {
+          const data = await response.json();
+          setCustomers(data);
+        }
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+      }
+    };
+    fetchCustomers();
+  }, []);
+
+  // Advanced search handler
+  const handleAdvancedSearch = (searchFilters) => {
+    setFilters(searchFilters);
+    setCurrentPage(1); // Reset to first page when filtering
+  };
+
+  const handleClearSearch = () => {
+    setFilters({});
+    setCurrentPage(1);
+  };
+
+  // Handle generate invoice
+  const handleGenerateInvoice = (transaction) => {
+    setInvoiceTransaction(transaction);
+    setShowInvoiceModal(true);
+  };
+
+  // Filter transaksi berdasarkan advanced search
+  const filteredTransaksi = laporan.transaksi ? laporan.transaksi.filter((t) => {
+    // Basic search filter
+    if (filters.search) {
+      const search = filters.search.toLowerCase();
+      const matchesSearch = 
+        t.produk.toLowerCase().includes(search) ||
+        t.customerNama.toLowerCase().includes(search) ||
+        t.metode.toLowerCase().includes(search) ||
+        t.tujuan?.toLowerCase().includes(search) ||
+        t.tag?.toLowerCase().includes(search);
+      
+      if (!matchesSearch) return false;
+    }
+
+    // Customer filter
+    if (filters.customerId && t.customerId !== parseInt(filters.customerId)) {
+      return false;
+    }
+
+    // Date range filter
+    if (filters.startDate) {
+      const startDate = new Date(filters.startDate);
+      const transaksiDate = new Date(t.tanggal);
+      if (transaksiDate < startDate) return false;
+    }
+
+    if (filters.endDate) {
+      const endDate = new Date(filters.endDate);
+      const transaksiDate = new Date(t.tanggal);
+      if (transaksiDate > endDate) return false;
+    }
+
+    // Amount range filter
+    if (filters.minAmount && t.hargaJual < parseFloat(filters.minAmount)) {
+      return false;
+    }
+
+    if (filters.maxAmount && t.hargaJual > parseFloat(filters.maxAmount)) {
+      return false;
+    }
+
+    // Currency filter
+    if (filters.mataUang && t.mataUang !== filters.mataUang) {
+      return false;
+    }
+
+    // Payment method filter
+    if (filters.metode && t.metode !== filters.metode) {
+      return false;
+    }
+
+    // Destination filter
+    if (filters.tujuan && t.tujuan !== filters.tujuan) {
+      return false;
+    }
+
+    // Tag filter
+    if (filters.tag && (!t.tag || !t.tag.toLowerCase().includes(filters.tag.toLowerCase()))) {
+      return false;
+    }
+
+    return true;
+  }) : [];
   
-  // Pagination untuk data transaksi
+  // Pagination untuk data transaksi yang sudah difilter
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = laporan.transaksi ? laporan.transaksi.slice(indexOfFirstItem, indexOfLastItem) : [];
-  const totalPages = laporan.transaksi ? Math.ceil(laporan.transaksi.length / itemsPerPage) : 0;
+  const currentItems = filteredTransaksi.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTransaksi.length / itemsPerPage);
   
   // Handle export data
   const handleExport = () => {
-    if (!laporan.transaksi || laporan.transaksi.length === 0) return;
+    if (!filteredTransaksi || filteredTransaksi.length === 0) return;
     
     try {
       let exportData;
@@ -63,7 +172,7 @@ export default function Laporan() {
       let fileType = '';
       
       // Format data untuk export
-      const formattedData = laporan.transaksi.map(t => ({
+      const formattedData = filteredTransaksi.map(t => ({
         ID: t.id,
         Tanggal: new Date(t.tanggal).toLocaleDateString('id-ID'),
         Customer: t.customerNama,
@@ -281,6 +390,25 @@ export default function Laporan() {
                 </h3>
               </div>
               
+              {/* Advanced Search */}
+              <div className="mb-4">
+                <AdvancedSearch 
+                  onSearch={handleAdvancedSearch}
+                  onClear={handleClearSearch}
+                  customers={customers}
+                />
+              </div>
+              
+              {/* Search Results Info */}
+              <div className="mb-4 text-sm text-gray-600 dark:text-gray-400">
+                Menampilkan {currentItems.length} dari {filteredTransaksi.length} transaksi
+                {Object.keys(filters).length > 0 && (
+                  <span className="ml-2 text-indigo-600 dark:text-indigo-400">
+                    (dengan filter aktif)
+                  </span>
+                )}
+              </div>
+              
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                   <thead className="bg-gray-50 dark:bg-gray-800">
@@ -306,6 +434,9 @@ export default function Laporan() {
                       <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Tujuan
                       </th>
+                      <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Aksi
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
@@ -321,16 +452,27 @@ export default function Laporan() {
                           {transaksi.produk}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-gray-900 dark:text-gray-300">
-                          {formatCurrency(transaksi.hargaJual)}
+                          {formatCurrency(transaksi.hargaJual, transaksi.mataUang)}
+                          <span className="ml-1 text-xs text-gray-500">{transaksi.mataUang}</span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-right text-green-600 dark:text-green-400">
-                          {formatCurrency(transaksi.profit)}
+                          {formatCurrency(transaksi.profit, transaksi.mataUang)}
+                          <span className="ml-1 text-xs text-gray-500">{transaksi.mataUang}</span>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                           {transaksi.metode}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300">
                           {transaksi.tujuan}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-sm text-center">
+                          <button
+                            onClick={() => handleGenerateInvoice(transaksi)}
+                            className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300"
+                            title="Generate Invoice"
+                          >
+                            <DocumentArrowDownIcon className="w-5 h-5" />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -412,6 +554,24 @@ export default function Laporan() {
           </div>
         )}
       </div>
+
+      {/* Invoice Modal */}
+      {showInvoiceModal && invoiceTransaction && (
+        <InvoiceModalNew
+          isOpen={showInvoiceModal}
+          onClose={() => {
+            setShowInvoiceModal(false);
+            setInvoiceTransaction(null);
+          }}
+          transaction={invoiceTransaction}
+          customer={{
+            nama: invoiceTransaction.customerNama,
+            address: invoiceTransaction.customerAddress || '',
+            phone: invoiceTransaction.customerPhone || '',
+            email: invoiceTransaction.customerEmail || ''
+          }}
+        />
+      )}
     </Layout>
   );
 } 

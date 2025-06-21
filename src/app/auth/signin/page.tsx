@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 
 export default function SignIn() {
   const router = useRouter();
@@ -12,32 +13,7 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [passwordFocused, setPasswordFocused] = useState(false);
-  const [passwordVisible, setPasswordVisible] = useState(false);
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { 
-        when: "beforeChildren",
-        staggerChildren: 0.1,
-        duration: 0.3
-      } 
-    }
-  };
-
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { type: "spring", stiffness: 300, damping: 24 }
-    }
-  };
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,13 +35,10 @@ export default function SignIn() {
       
       if (result?.error) {
         setError('Email atau password salah');
-        return;
+      } else {
+        router.push('/');
       }
-      
-      router.push('/');
-      router.refresh();
     } catch (error) {
-      console.error('Login error:', error);
       setError('Terjadi kesalahan saat login');
     } finally {
       setIsLoading(false);
@@ -78,7 +51,7 @@ export default function SignIn() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-700 opacity-90 z-10"></div>
         <div 
-          className="absolute inset-0 bg-[url('https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80')] bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80')" }}
         ></div>
         
@@ -106,15 +79,21 @@ export default function SignIn() {
       <div className="w-full lg:w-1/2 flex items-center justify-center px-6 py-12 lg:px-16 xl:px-24">
         <motion.div 
           className="w-full max-w-md"
-          initial="hidden"
-          animate="visible"
-          variants={containerVariants}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
         >
-          <motion.div variants={itemVariants} className="text-center mb-10">
+          {/* Logo and Header */}
+          <motion.div 
+            className="text-center mb-8"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2, duration: 0.5 }}
+          >
             <div className="flex justify-center mb-6">
               <div className="h-14 w-14 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
                 </svg>
               </div>
             </div>
@@ -126,20 +105,18 @@ export default function SignIn() {
             </p>
           </motion.div>
 
+          {/* Form */}
           <motion.form 
             className="space-y-6"
             onSubmit={handleSubmit}
-            variants={itemVariants}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
           >
             {/* Email Input */}
-            <div className="relative">
-              <label 
-                htmlFor="email" 
-                className={`absolute left-3 pointer-events-none transition-all duration-300 ${
-                  emailFocused || email ? 'text-xs -translate-y-6 text-indigo-600 dark:text-indigo-400' : 'text-sm translate-y-2 text-gray-500'
-                }`}
-              >
-                Email
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email Address
               </label>
               <input
                 id="email"
@@ -147,73 +124,39 @@ export default function SignIn() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                onFocus={() => setEmailFocused(true)}
-                onBlur={() => setEmailFocused(false)}
                 required
-                className="block w-full px-3 pt-4 pb-2 border-0 border-b-2 border-gray-300 bg-transparent focus:ring-0 focus:border-indigo-600 dark:border-gray-700 dark:text-white dark:focus:border-indigo-500 text-gray-900 transition-all duration-300"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                placeholder="Enter your email"
               />
             </div>
 
             {/* Password Input */}
-            <div className="relative">
-              <label 
-                htmlFor="password" 
-                className={`absolute left-3 pointer-events-none transition-all duration-300 ${
-                  passwordFocused || password ? 'text-xs -translate-y-6 text-indigo-600 dark:text-indigo-400' : 'text-sm translate-y-2 text-gray-500'
-                }`}
-              >
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Password
               </label>
-              <div className="flex items-center">
+              <div className="relative">
                 <input
                   id="password"
                   name="password"
-                  type={passwordVisible ? "text" : "password"}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onFocus={() => setPasswordFocused(true)}
-                  onBlur={() => setPasswordFocused(false)}
                   required
-                  className="block w-full px-3 pt-4 pb-2 border-0 border-b-2 border-gray-300 bg-transparent focus:ring-0 focus:border-indigo-600 dark:border-gray-700 dark:text-white dark:focus:border-indigo-500 text-gray-900 transition-all duration-300"
+                  className="w-full px-3 py-2 pr-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 dark:bg-gray-800 dark:border-gray-600 dark:text-white"
+                  placeholder="Enter your password"
                 />
-                <button 
+                <button
                   type="button"
-                  onClick={() => setPasswordVisible(!passwordVisible)}
-                  className="absolute right-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                 >
-                  {passwordVisible ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
+                  {showPassword ? (
+                    <EyeSlashIcon className="h-5 w-5" />
                   ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
+                    <EyeIcon className="h-5 w-5" />
                   )}
                 </button>
-              </div>
-            </div>
-
-            {/* Remember Me & Forgot Password */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  checked={rememberMe}
-                  onChange={() => setRememberMe(!rememberMe)}
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                  Ingat saya
-                </label>
-              </div>
-              <div className="text-sm">
-                <Link href="#" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400">
-                  Lupa password?
-                </Link>
               </div>
             </div>
 
@@ -238,16 +181,14 @@ export default function SignIn() {
               </motion.div>
             )}
 
-            {/* Login Button */}
+            {/* Submit Button */}
             <motion.button
               type="submit"
               disabled={isLoading}
-              className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-lg
-                        text-sm font-semibold text-white bg-gradient-to-r from-indigo-600 to-purple-600 
-                        hover:from-indigo-700 hover:to-purple-700
-                        focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
-                        shadow-md hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0
-                        transition-all duration-200 ${isLoading ? 'opacity-75 cursor-not-allowed' : ''}`}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg
+                      text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700
+                      focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500
+                      shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               whileHover={{ scale: 1.01 }}
               whileTap={{ scale: 0.98 }}
             >
@@ -261,47 +202,29 @@ export default function SignIn() {
                 </>
               ) : 'Masuk'}
             </motion.button>
-            
-            {/* Social Login */}
-            <div className="mt-6">
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300 dark:border-gray-700"></div>
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">Atau masuk dengan</span>
-                </div>
-              </div>
-              
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <a href="#" className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200">
-                  <svg className="w-5 h-5 text-[#4285F4]" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M12.545,10.239v3.821h5.445c-0.712,2.315-2.647,3.972-5.445,3.972c-3.332,0-6.033-2.701-6.033-6.032s2.701-6.032,6.033-6.032c1.498,0,2.866,0.549,3.921,1.453l2.814-2.814C17.503,2.988,15.139,2,12.545,2C7.021,2,2.543,6.477,2.543,12s4.478,10,10.002,10c8.396,0,10.249-7.85,9.426-11.748L12.545,10.239z" />
-                  </svg>
-                </a>
-                <a href="#" className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 dark:border-gray-700 rounded-lg shadow-sm bg-white dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200">
-                  <svg className="w-5 h-5 text-[#050708]" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 2C6.477 2 2 6.477 2 12.001C2 16.991 5.107 21.127 9.444 22.618C9.332 22.409 9.279 22.164 9.279 21.902V20.023C8.882 20.023 8.196 20.023 8.024 20.023C7.368 20.023 6.777 19.766 6.499 19.267C6.189 18.703 6.14 17.861 5.44 17.317C5.16 17.073 5.336 16.797 5.656 16.829C6.216 16.958 6.667 17.304 7.089 17.863C7.509 18.423 7.715 18.552 8.56 18.552C8.913 18.552 9.44 18.521 9.936 18.428C10.206 17.736 10.647 17.113 11.192 16.779C7.71 16.384 6.058 14.51 6.058 12.153C6.058 11.013 6.499 9.904 7.271 8.976C7.04 8.047 6.723 6.456 7.368 5.881C9.076 5.881 10.107 7.022 10.341 7.273C11.176 7.023 12.107 6.886 13.075 6.886C14.043 6.886 14.976 7.023 15.812 7.273C16.045 7.021 17.076 5.881 18.784 5.881C19.431 6.456 19.111 8.05 18.879 8.978C19.649 9.905 20.089 11.012 20.089 12.153C20.089 14.51 18.438 16.386 14.951 16.779C15.79 17.29 16.393 18.613 16.393 19.736V21.902C16.393 22.039 16.367 22.147 16.349 22.263C20.227 20.551 23 16.575 23 11.999C23 6.477 18.523 2 12 2Z" />
-                  </svg>
-                </a>
-              </div>
-            </div>
-            
-            {/* Sign Up Link */}
-            <div className="text-center mt-8">
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Belum punya akun?{' '}
-                <Link href="/auth/signup" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 hover:underline">
-                  Daftar sekarang
-                </Link>
-              </p>
-            </div>
           </motion.form>
+
+          {/* Sign Up Link */}
+          <motion.div 
+            className="text-center mt-8"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5, duration: 0.5 }}
+          >
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Belum punya akun?{' '}
+              <Link href="/auth/signup" className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 hover:underline">
+                Daftar sekarang
+              </Link>
+            </p>
+          </motion.div>
           
           {/* Footer */}
           <motion.p 
-            variants={itemVariants} 
             className="mt-10 text-center text-xs text-gray-500 dark:text-gray-400"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.6, duration: 0.5 }}
           >
             &copy; {new Date().getFullYear()} Catatan Uang. Semua hak dilindungi.
           </motion.p>

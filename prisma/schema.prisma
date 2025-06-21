@@ -14,6 +14,8 @@ model Transaksi {
   produk     String
   hargaAsli  Int
   hargaJual  Int
+  mataUang   String   @default("IDR")
+  kurs       Float    @default(1.0)
   metode     String
   tujuan     String
   tag        String
@@ -39,6 +41,7 @@ model User {
   password      String?
   image         String?
   emailVerified DateTime?
+  mataUangDefault String    @default("IDR")
   createdAt     DateTime    @default(now())
   accounts      Account[]
   sessions      Session[]

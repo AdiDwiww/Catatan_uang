@@ -186,4 +186,168 @@ Proyek ini dilisensikan di bawah Lisensi MIT - lihat file [LICENSE](LICENSE) unt
 
 </div>
 
-<p align="center">Dibuat dengan ❤️ oleh <a href="https://github.com/username">Username</a></p> 
+<p align="center">Dibuat dengan ❤️ oleh <a href="https://github.com/username">Username</a></p>
+
+## Advanced Search Features
+
+The Advanced Search component provides powerful filtering capabilities across the application:
+
+### Search Fields
+- **Text Search**: Search across product names, customer names, payment methods, destinations, and tags
+- **Customer Filter**: Filter by specific customers using dropdown selection
+- **Date Range**: Filter transactions within specific date periods
+- **Amount Range**: Filter by minimum and maximum transaction amounts
+- **Currency Filter**: Filter by specific currencies (IDR, USD, EUR, SGD, MYR)
+- **Payment Method**: Filter by payment type (Cash, Transfer, Credit Card, etc.)
+- **Destination**: Filter by transaction destination (Online, Offline, etc.)
+- **Tag Filter**: Filter by transaction tags for categorization
+
+### Integration Points
+- **Transaction Page**: Advanced search integrated with transaction listing
+- **Report Page**: Advanced search integrated with detailed transaction reports
+- **Export Functionality**: Export filtered results only
+- **Pagination**: Works seamlessly with paginated results
+- **Real-time Updates**: Search results update immediately as filters change
+
+### Usage
+1. Navigate to Transactions or Reports page
+2. Use the Advanced Search component at the top
+3. Apply multiple filters simultaneously
+4. View filtered results with count indicators
+5. Export filtered data as needed
+6. Clear all filters with the clear button
+
+## Invoice Generation Features
+
+The Invoice Generation system provides professional PDF invoice creation:
+
+### Invoice Components
+- **Company Header**: Customizable company name, address, contact details
+- **Invoice Details**: Automatic invoice numbering, dates, due dates
+- **Customer Information**: Customer name, address, contact details
+- **Item Details**: Product description, quantity, price, totals
+- **Financial Summary**: Subtotal, tax, total amounts
+- **Terms & Notes**: Customizable payment terms and notes
+- **Professional Layout**: Clean, professional PDF design
+
+### Integration Points
+- **Transaction Page**: Generate invoice button for each transaction
+- **Report Page**: Generate invoice button for filtered transactions
+- **Settings Page**: Company information management
+- **Multi-currency Support**: Invoices display in transaction currency
+- **PDF Preview**: Preview invoice before download
+
+### Usage
+1. Navigate to Settings page to configure company information
+2. Go to Transactions or Reports page
+3. Click the invoice icon (📄) next to any transaction
+4. Review and customize invoice details
+5. Preview the generated PDF
+6. Download the invoice as PDF file
+
+### Company Settings
+- **Company Name**: Business name for invoice header
+- **Address**: Business address for invoice
+- **Contact Details**: Phone, email, website
+- **Tax Information**: NPWP number for Indonesian businesses
+- **Bank Details**: Bank name and account number
+- **Persistent Storage**: Settings saved in localStorage
+
+## Technology Stack
+
+- **Frontend**: Next.js, React, Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: Prisma ORM with SQLite/PostgreSQL
+- **Authentication**: NextAuth.js
+- **Charts**: Chart.js with custom components
+- **Data Processing**: Papa Parse for CSV handling
+- **PDF Generation**: jsPDF for invoice generation
+
+## Getting Started
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd catatan-uang
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env.local
+   # Edit .env.local with your configuration
+   ```
+
+4. **Set up the database**
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+5. **Run the development server**
+   ```bash
+   npm run dev
+   ```
+
+6. **Access the application**
+   - Open [http://localhost:3000](http://localhost:3000)
+   - Sign up for a new account or sign in
+
+## Project Structure
+
+```
+├── components/          # Reusable UI components
+│   ├── AdvancedSearch.js    # Advanced search and filtering
+│   ├── Charts.js           # Basic chart components
+│   ├── AdvancedCharts.js   # Complex data visualizations
+│   ├── Layout.js           # Main layout wrapper
+│   ├── Sidebar.js          # Navigation sidebar
+│   └── TransaksiForm.js    # Transaction form component
+├── pages/              # Next.js pages and API routes
+│   ├── api/            # API endpoints
+│   ├── index.js        # Dashboard page
+│   ├── transaksi.js    # Transaction management
+│   ├── customer.js     # Customer management
+│   └── laporan.js      # Reports and analytics
+├── lib/                # Utility functions and hooks
+│   ├── currency.js     # Currency formatting utilities
+│   ├── hooks.js        # Custom React hooks
+│   └── prisma.ts       # Database connection
+├── prisma/             # Database schema and migrations
+└── styles/             # Global CSS styles
+```
+
+## Contributing
+
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### 📊 Reporting & Analytics
+- **Interactive dashboard** with KPI cards
+- **Advanced charts** (Line, Bar, Pie, Doughnut)
+- **Sales trend analysis** over time
+- **Payment method distribution**
+- **Customer performance analysis**
+- **Product performance tracking**
+- **Profit margin analysis**
+- **Export capabilities** (CSV, JSON, Excel)
+
+### 🧾 Invoice Generation
+- **PDF invoice generation** from transaction data
+- **Customizable company information** with settings page
+- **Professional invoice templates** with company branding
+- **Multi-currency support** in invoices
+- **Invoice preview** before download
+- **Automatic invoice numbering** system
+- **Customer details integration** in invoices
+- **Download as PDF** functionality
+- **Company settings management** with localStorage persistence
+
+### 📁 Data Import/Export 

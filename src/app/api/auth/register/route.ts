@@ -7,8 +7,11 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { name, email, password } = body;
     
+    console.log('Registration attempt:', { name, email, password: password ? '[HIDDEN]' : 'MISSING' });
+    
     // Validasi input
     if (!name || !email || !password) {
+      console.log('Validation failed:', { name: !!name, email: !!email, password: !!password });
       return NextResponse.json(
         { message: 'Data tidak lengkap' },
         { status: 400 }
@@ -23,6 +26,7 @@ export async function POST(request: Request) {
     });
     
     if (existingUser) {
+      console.log('Email already exists:', email);
       return NextResponse.json(
         { message: 'Email sudah terdaftar' },
         { status: 400 }
@@ -41,6 +45,8 @@ export async function POST(request: Request) {
       },
     });
     
+    console.log('User created successfully:', { id: user.id, email: user.email });
+    
     // Hapus password dari respons
     const { password: _, ...userWithoutPassword } = user;
     
@@ -51,7 +57,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Registration error:', error);
     return NextResponse.json(
-      { message: 'Terjadi kesalahan pada server' },
+      { message: 'Terjadi kesalahan pada server', error: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

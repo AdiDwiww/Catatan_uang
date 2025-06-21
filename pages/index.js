@@ -20,6 +20,7 @@ import FilterSearch from '../components/FilterSearch';
 import Pagination from '../components/Pagination';
 import { useDashboard } from '../lib/hooks';
 import { AdvancedLineChart, AdvancedPieChart } from '../components/AdvancedCharts';
+import { formatCurrency } from '../lib/currency';
 
 export default function Home() {
   const router = useRouter();
@@ -270,11 +271,13 @@ export default function Home() {
                             {t.produk}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900 dark:text-gray-300 text-right">
-                            {formatCurrency(t.hargaJual)}
+                            {formatCurrency(t.hargaJual, t.mataUang)}
+                            <span className="ml-1 text-xs text-gray-500">{t.mataUang}</span>
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-right">
                             <span className={`${t.hargaJual > t.hargaAsli ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                              {formatCurrency(t.hargaJual - t.hargaAsli)}
+                              {formatCurrency(t.hargaJual - t.hargaAsli, t.mataUang)}
+                              <span className="ml-1 text-xs text-gray-500">{t.mataUang}</span>
                             </span>
                           </td>
                         </tr>
